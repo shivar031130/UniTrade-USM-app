@@ -133,8 +133,8 @@
         </button>
         
         <div class="secondary-actions">
-          <a href="tracking.html" class="btn-secondary">Track Order</a>
-          <a href="index.html" class="btn-secondary">Back to Home</a>
+<a id="trackBtn" href="#" class="btn-secondary">Track Order</a>          
+<a href="index.html" class="btn-secondary">Back to Home</a>
         </div>
       </div>
 
@@ -151,7 +151,7 @@
     const txIds = params.get('tx') ? params.get('tx').split(',') : [];
     let receiptData = [];
 
-    // 2. LOAD DATA
+// 2. LOAD DATA
     async function load() {
         if(txIds.length === 0) return window.location.href = 'index.html';
 
@@ -167,6 +167,13 @@
 
         receiptData = txs;
         
+        // --- THE FIX: UPDATE TRACKING BUTTON URL ---
+        // We link to the first transaction in the list
+        if (txs.length > 0) {
+            document.getElementById('trackBtn').href = `tracking.html?tx=${txs[0].id}`;
+        }
+        // -------------------------------------------
+
         const totalPaid = txs.reduce((sum, t) => sum + parseFloat(t.amount_paid || 0), 0);
         const method = (txs[0].payment_method || 'cod').toUpperCase();
         

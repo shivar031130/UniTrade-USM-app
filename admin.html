@@ -445,8 +445,29 @@
                 </td>
             </tr>`).join('');
     }
-    async function setListing(id, status) { await _supabase.from('listings').update({ status }).eq('id', id); loadProducts(); }
+async function setListing(id, status) {
+    if(!confirm(`Are you sure you want to mark this listing as ${status}?`)) return;
 
+    console.log(`Updating Listing ID: ${id} to Status: ${status}`);
+
+    const { data, error } = await _supabase
+        .from('listings')
+        .update({ status: status })
+        .eq('id', id)
+        .select(); // Adding .select() ensures we get the updated row back to verify
+
+    if (error) {
+        console.error("Database Error:", error);
+        alert("Failed to update listing: " + error.message);
+    } else {
+        console.log("Update Success:", data);
+        // Refresh the table
+        // Check if we are currently viewing "Pending" to refresh the correct view
+        // For simplicity, we just reload the default view or the current state if you add state tracking
+        loadProducts(); 
+        alert(`Listing marked as ${status}`);
+    }
+}
     async function loadTransactions() {
         const { data: txs } = await _supabase.from('transactions')
             .select('*, listings(title, image_url), buyer:buyer_id(full_name), seller:seller_id(full_name)')
