@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Safety Tips — UniTrade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root[data-theme="dark"] { --bg: #0f172a; --card: rgba(30, 41, 59, 0.7); --border: rgba(148, 163, 184, 0.2); --text: #f1f5f9; --muted: #94a3af; --accent: #3b82f6; }
+    body { margin: 0; font-family: 'Poppins', Inter, system-ui, sans-serif; background-color: var(--bg); color: var(--text); padding: 32px 40px; background-image: radial-gradient(ellipse at top, rgba(59, 130, 246, 0.1), transparent 60%); }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+    h1 { font-size: 2.5rem; font-weight: 700; }
+    .btn { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent); color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 0.75rem; cursor: pointer; text-decoration: none; font-weight: 600; }
+    .tips-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+    .tip-card { background: var(--card); backdrop-filter: blur(10px); border-radius: 1rem; border: 1px solid var(--border); padding: 1.5rem; display: flex; align-items: flex-start; gap: 1rem; }
+    .tip-icon { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; background: rgba(59, 130, 246, 0.1); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+    .tip-icon svg { width: 24px; height: 24px; }
+    .tip-card h3 { margin: 0 0 0.5rem 0; font-size: 1.125rem; }
+    .tip-card p { margin: 0; color: var(--muted); line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>Safety First</h1><a href="index.html" class="btn">← Back</a></div>
+    <main>
+      <div class="tips-grid">
+        <div class="tip-card">
+          <div class="tip-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a3.002 3.002 0 014.288 0M12 15a3 3 0 100-6 3 3 0 000 6z"></path></svg></div>
+          <div><h3>Meet in Public</h3><p>Always arrange to meet in a well-lit, public location on campus, like the library lobby or student union.</p></div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></div>
+          <div><h3>Inspect Before Paying</h3><p>Thoroughly check the item to ensure it matches the description and is in the expected condition before you hand over any money.</p></div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+          <div><h3>Trust Your Gut</h3><p>If a deal seems too good to be true, or if a user's behavior seems suspicious, it's okay to walk away. Your safety is the priority.</p></div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg></div>
+          <div><h3>Use Secure Chat</h3><p>Keep all communication within the UniTrade chat system. Avoid sharing personal contact information like your phone number or social media.</p></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

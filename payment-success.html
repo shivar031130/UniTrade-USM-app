@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Payment Success — UniTrade</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* === THEME === */
+    :root[data-theme="dark"]{
+      --bg:#0f172a; --card:#1e293b; --card-hover:#2d3b52; --muted:#94a3b8; 
+      --accent:#3b82f6; --accent-hover:#2563eb; --text:#f1f5f9; --border:rgba(148, 163, 184, 0.15); 
+      --success:#10b981; --gradient-1:#6366f1; --gradient-2:#8b5cf6; --input-bg:#0f172a;
+    }
+    :root[data-theme="light"]{
+      --bg:#f8fafc; --card:#ffffff; --card-hover:#f1f5f9; --muted:#64748b; 
+      --accent:#3b82f6; --accent-hover:#2563eb; --text:#0f172a; --border:rgba(15, 23, 42, 0.1); 
+      --success:#10b981; --gradient-1:#6366f1; --gradient-2:#8b5cf6; --input-bg:#f8fafc;
+    }
+    
+    * { box-sizing: border-box; }
+    body{ margin:0; font-family:'Inter', sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+    
+    /* HEADER */
+    header{
+        display:flex; align-items:center; gap:24px; padding:20px 40px; border-bottom:1px solid var(--border);
+        background: var(--bg); position: sticky; top: 0; z-index: 100;
+    }
+    .brand{display:flex; align-items:center; gap:16px; text-decoration:none; color:inherit;}
+    .logo{
+        width:48px; height:48px; border-radius:12px; 
+        background:linear-gradient(135deg,var(--gradient-1),var(--gradient-2)); 
+        display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:20px;
+    }
+    .brand h1{font-size:22px; margin:0; font-weight:700;}
+    .top-actions{margin-left:auto; display:flex; gap:12px; align-items:center;}
+    
+    .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; text-decoration: none; }
+    .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* CONTENT */
+    .main-content {
+      flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 20px;
+      background-image: radial-gradient(ellipse at center, rgba(16, 185, 129, 0.1), transparent 60%);
+    }
+    
+    .success-card {
+      max-width: 500px; width: 100%; text-align: center; 
+      background: var(--card); padding: 40px; border-radius: 20px; 
+      border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      animation: fadeIn 0.8s ease-out;
+    }
+
+    /* Icon Animation */
+    .icon-wrapper {
+      width: 100px; height: 100px; margin: 0 auto 20px; border-radius: 50%;
+      background: rgba(16, 185, 129, 0.1); display: flex; align-items: center; justify-content: center;
+    }
+    .checkmark__circle { stroke-dasharray: 166; stroke-dashoffset: 166; stroke-width: 3; stroke: var(--success); fill: none; animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards; }
+    .checkmark__check { transform-origin: 50% 50%; stroke-dasharray: 48; stroke-dashoffset: 48; stroke-width: 4; stroke: var(--success); fill: none; animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards; }
+
+    h1 { font-size: 28px; font-weight: 800; margin: 0 0 10px; color: var(--success); }
+    p { color: var(--muted); margin: 0 0 30px; line-height: 1.6; }
+
+    /* Receipt Details */
+    .receipt-box {
+      background: var(--input-bg); border: 1px solid var(--border); border-radius: 12px; 
+      padding: 20px; text-align: left; margin-bottom: 30px;
+    }
+    .row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; }
+    .row:last-child { margin-bottom: 0; padding-top: 12px; border-top: 1px dashed var(--border); font-weight: 700; font-size: 16px; }
+    .label { color: var(--muted); }
+    .val { font-weight: 600; font-family: monospace; }
+
+    /* Buttons */
+    .actions { display: flex; flex-direction: column; gap: 12px; }
+    .btn-primary {
+      background: var(--accent); color: white; border: none; padding: 14px; width: 100%;
+      border-radius: 10px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-2px); }
+    
+    .secondary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn-secondary {
+      background: transparent; border: 1px solid var(--border); color: var(--text); padding: 12px;
+      border-radius: 10px; font-weight: 600; cursor: pointer; text-decoration: none; text-align: center; font-size: 14px; transition: 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); background: rgba(59, 130, 246, 0.05); }
+
+    @keyframes stroke { 100% { stroke-dashoffset: 0; } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    
+    @media(max-width: 600px) { header { padding: 16px 20px; } .brand h1 { display: none; } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html">
+        <div class="logo">UT</div>
+        <div><h1>UniTrade</h1></div>
+    </a>
+    <div class="top-actions">
+        <button class="btn ghost" onclick="toggleTheme()" id="themeIcon">🌙</button>
+        <a href="cart.html" class="btn ghost">Cart</a>
+        <a href="dashboard.html" class="btn ghost">Dashboard</a>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <div class="success-card">
+      
+      <div class="icon-wrapper">
+        <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52" width="60" height="60">
+          <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+          <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+        </svg>
+      </div>
+
+      <h1>Order Placed!</h1>
+      <p>Your transaction has been securely recorded.<br>The seller will be notified to arrange delivery.</p>
+
+      <div id="receiptBox" class="receipt-box">
+        <div style="text-align:center; color:var(--muted)">Loading details...</div>
+      </div>
+
+      <div class="actions">
+        <button onclick="downloadReceipt()" class="btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Receipt
+        </button>
+        
+        <div class="secondary-actions">
+          <a href="tracking.html" class="btn-secondary">Track Order</a>
+          <a href="index.html" class="btn-secondary">Back to Home</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // 1. CONFIG
+    const SUPABASE_URL = 'https://dkpnhswjjmjligemxoet.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrcG5oc3dqam1qbGlnZW14b2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTg4MjksImV4cCI6MjA4MTczNDgyOX0.aGk9fC0-u_ClnxfOVh_BH4_Xj-cF7i0_XVydYV_T-RM';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const params = new URLSearchParams(window.location.search);
+    const txIds = params.get('tx') ? params.get('tx').split(',') : [];
+    let receiptData = [];
+
+    // 2. LOAD DATA
+    async function load() {
+        if(txIds.length === 0) return window.location.href = 'index.html';
+
+        const { data: txs, error } = await _supabase
+            .from('transactions')
+            .select(`*, listings(title)`)
+            .in('id', txIds);
+
+        if(error || !txs) {
+            document.getElementById('receiptBox').innerText = "Error loading receipt.";
+            return;
+        }
+
+        receiptData = txs;
+        
+        const totalPaid = txs.reduce((sum, t) => sum + parseFloat(t.amount_paid || 0), 0);
+        const method = (txs[0].payment_method || 'cod').toUpperCase();
+        
+        // Dynamic Status Color
+        const status = txs[0].status.toUpperCase();
+        const statusColor = status === 'PENDING' ? '#f59e0b' : '#10b981';
+
+        document.getElementById('receiptBox').innerHTML = `
+          <div class="row"><span class="label">Order Status</span><span class="val" style="color:${statusColor}">${status}</span></div>
+          <div class="row"><span class="label">Date</span><span class="val">${new Date().toLocaleDateString()}</span></div>
+          <div class="row"><span class="label">Transaction ID</span><span class="val">#${txs[0].id.slice(0,8).toUpperCase()}</span></div>
+          <div class="row"><span class="label">Payment Method</span><span class="val">${method}</span></div>
+          <div class="row"><span class="label">Total Paid</span><span class="val" style="color:var(--success)">RM ${totalPaid.toFixed(2)}</span></div>
+        `;
+    }
+
+    // 3. GENERATE RECEIPT
+    function downloadReceipt() {
+        let text = "========================================\n";
+        text += "          UNITRADE OFFICIAL RECEIPT      \n";
+        text += "========================================\n\n";
+        text += `Date: ${new Date().toLocaleString()}\n`;
+        text += `Payment Method: ${receiptData[0].payment_method.toUpperCase()}\n`;
+        text += `Status: ${receiptData[0].status.toUpperCase()}\n\n`;
+        
+        text += "----------------------------------------\n";
+        text += "ITEMS PURCHASED\n";
+        text += "----------------------------------------\n";
+        
+        let grandTotal = 0;
+        
+        receiptData.forEach((tx, i) => {
+            const paid = parseFloat(tx.amount_paid);
+            grandTotal += paid;
+            
+            text += `${i + 1}. ${tx.listings.title}\n`;
+            text += `   Transaction ID: ${tx.id}\n`;
+            text += `   Quantity: ${tx.quantity}\n`;
+            text += `   Subtotal: RM ${paid.toFixed(2)}\n\n`;
+        });
+        
+        text += "----------------------------------------\n";
+        text += `GRAND TOTAL:        RM ${grandTotal.toFixed(2)}\n`;
+        text += "----------------------------------------\n\n";
+        text += "Note: Includes item price, shipping, and service fees.\n";
+        text += "Thank you for using UniTrade!\n";
+
+        const blob = new Blob([text], { type: 'text/plain' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `UniTrade_Receipt_${Date.now()}.txt`;
+        link.click();
+    }
+
+    // 4. THEME TOGGLE
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        document.getElementById('themeIcon').innerText = next === 'dark' ? '🌙' : '☀️';
+    }
+    const t = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    document.getElementById('themeIcon').innerText = t === 'dark' ? '🌙' : '☀️';
+
+    load();
+  </script>
+</body>
+</html>

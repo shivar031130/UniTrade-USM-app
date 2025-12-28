@@ -1,0 +1,1176 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Product Details — UniTrade</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* =========================================
+       1. CORE VARIABLES & THEME
+       ========================================= */
+    :root[data-theme="dark"]{
+      --bg:#0f172a; 
+      --card:#1e293b; 
+      --card-hover:#2d3b52; 
+      --muted:#94a3b8; 
+      --accent:#3b82f6; 
+      --text:#f1f5f9; 
+      --border:rgba(148,163,184,0.1);
+      --success:#10b981; 
+      --warning:#f59e0b; 
+      --danger:#ef4444; 
+      --info:#3b82f6;
+      --gradient-1:#6366f1; 
+      --gradient-2:#8b5cf6; 
+      --gradient-3:#ec4899;
+      --input-bg: rgba(15, 23, 42, 0.5);
+    }
+    :root[data-theme="light"]{
+      --bg:#f8fafc; 
+      --card:#ffffff; 
+      --card-hover:#f1f5f9; 
+      --muted:#64748b; 
+      --accent:#3b82f6; 
+      --text:#0f172a; 
+      --border:rgba(15,23,42,0.1);
+      --success:#10b981; 
+      --warning:#f59e0b; 
+      --danger:#ef4444; 
+      --info:#3b82f6;
+      --gradient-1:#6366f1; 
+      --gradient-2:#8b5cf6; 
+      --gradient-3:#ec4899;
+      --input-bg: #f8fafc;
+    }
+    
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0; 
+      font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+      background: var(--bg); 
+      color: var(--text); 
+      padding: 24px;
+      transition: background 0.3s ease, color 0.3s ease;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px; 
+      margin: 0 auto;
+    }
+
+    /* =========================================
+       2. GRID & LAYOUT
+       ========================================= */
+    .grid {
+      display: grid; 
+      grid-template-columns: 500px 1fr; 
+      gap: 32px; 
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: var(--card); 
+      padding: 24px; 
+      border-radius: 16px; 
+      border: 1px solid var(--border); 
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      overflow: hidden;
+    } 
+    
+    /* =========================================
+       3. IMAGES & GALLERY
+       ========================================= */
+    .product-images { 
+      position: relative; 
+    }
+
+    img.main {
+      width: 100%; 
+      height: 400px; 
+      object-fit: cover; 
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.2);
+      transition: all 0.3s ease;
+    }
+
+    .thumbnails {
+      display: grid; 
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px; 
+      margin-top: 16px;
+    }
+
+    .thumb {
+      width: 100%; 
+      height: 80px; 
+      border-radius: 8px;
+      object-fit: cover; 
+      cursor: pointer;
+      border: 2px solid transparent;
+      opacity: 0.6;
+      transition: all 0.2s ease;
+    }
+
+    .thumb:hover { 
+      transform: translateY(-2px); 
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
+      opacity: 1;
+    }
+
+    .thumb.active { 
+      border-color: var(--accent); 
+      opacity: 1;
+    }
+    
+    /* =========================================
+       4. PRODUCT INFO & TYPOGRAPHY
+       ========================================= */
+    h1 {
+      margin: 0 0 16px; 
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--text), var(--muted));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .meta {
+      display: flex; 
+      gap: 24px; 
+      color: var(--muted); 
+      margin-bottom: 20px; 
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .meta-item {
+      display: flex; 
+      align-items: center; 
+      gap: 8px;
+    }
+
+    .meta-item svg {
+      width: 18px; 
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+    
+    .price-section {
+      display: flex; 
+      align-items: baseline; 
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .current-price {
+      font-size: 36px; 
+      font-weight: 700;
+      color: var(--success);
+      text-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+      letter-spacing: -1px;
+    }
+
+    /* =========================================
+       5. BUTTONS & ACTIONS
+       ========================================= */
+    .btn {
+      background: linear-gradient(135deg, var(--accent), var(--info)); 
+      color: white; 
+      border: none; 
+      padding: 14px 24px; 
+      border-radius: 12px; 
+      cursor: pointer; 
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 8px;
+      flex: 1;
+    }
+
+    .btn svg {
+      width: 20px; 
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .btn:hover { 
+      transform: translateY(-2px); 
+      opacity: 0.9; 
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      background: var(--card-hover);
+      color: var(--muted);
+    }
+
+    .btn.ghost {
+      background: transparent; 
+      border: 1px solid var(--border);
+      color: var(--text);
+      box-shadow: none;
+    }
+
+    .btn.ghost:hover { 
+      background: rgba(59, 130, 246, 0.1); 
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Buy Now Button Style */
+    .btn.buy {
+        background: linear-gradient(135deg, var(--success), #059669);
+    }
+    .btn.buy:hover {
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+
+    .actions {
+      display: flex; 
+      align-items: center;
+      gap: 12px; 
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+    
+    /* QUANTITY SELECTOR */
+    .qty-selector {
+        display: flex; 
+        align-items: center; 
+        border: 1px solid var(--border); 
+        border-radius: 12px; 
+        background: var(--input-bg); 
+        overflow: hidden; 
+        width: fit-content; 
+        margin-right: 0px; 
+        height: 48px; /* Match button height approx */
+    }
+    .qty-btn {
+        background: transparent; 
+        border: none; 
+        color: var(--text); 
+        width: 40px; 
+        height: 100%;
+        font-size: 18px; 
+        cursor: pointer; 
+        transition: 0.2s; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+    }
+    .qty-btn:hover:not(:disabled) { 
+        background: var(--card-hover); 
+        color: var(--accent); 
+    }
+    .qty-btn:disabled {
+        color: var(--muted);
+        cursor: not-allowed;
+    }
+    .qty-input {
+        width: 50px; 
+        text-align: center; 
+        border: none; 
+        background: transparent; 
+        color: var(--text);
+        font-weight: 600; 
+        font-size: 16px; 
+        pointer-events: none; /* User uses buttons */
+    }
+    
+    /* =========================================
+       6. SELLER CARD
+       ========================================= */
+    .seller-card {
+      display: flex; 
+      align-items: center; 
+      gap: 16px;
+      padding: 20px; 
+      margin-top: 24px;
+      background: rgba(59, 130, 246, 0.05);
+      border-radius: 12px; 
+      border: 1px solid var(--border);
+    }
+
+    .seller-avatar {
+      width: 64px; 
+      height: 64px; 
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2));
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      color: white; 
+      font-weight: 600; 
+      font-size: 24px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    
+    .seller-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .seller-info h3 {
+      margin: 0 0 4px;
+      font-size: 18px;
+    }
+
+    .seller-stats {
+      display: flex; 
+      gap: 16px;
+      font-size: 14px; 
+      color: var(--muted);
+    }
+    
+    /* =========================================
+       7. PRODUCT STATS (Stock, Category, etc)
+       ========================================= */
+    .product-stats {
+      display: grid; 
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px; 
+      margin: 24px 0;
+    }
+
+    .stat-item {
+      padding: 16px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+
+    .stat-value {
+      font-size: 20px; 
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+    }
+    
+    /* =========================================
+       8. TABS SECTION
+       ========================================= */
+    .tabs {
+      display: flex; 
+      gap: 5px;
+      background: rgba(255,255,255,0.03);
+      padding: 4px; 
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      padding: 10px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      flex: 1;
+      text-align: center;
+      transition: all 0.2s ease;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .tab.active {
+      background: var(--card-hover);
+      font-weight: 700;
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .tab:hover:not(.active) {
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+    }
+    
+    /* =========================================
+       9. DELIVERY BADGES (New Feature)
+       ========================================= */
+    .delivery-options {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 5px;
+    }
+    
+    .badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        border: 1px solid transparent;
+        letter-spacing: 0.5px;
+    }
+    
+    .badge.meetup { background: rgba(16, 185, 129, 0.15); color: #10b981; border-color: #10b981; }
+    .badge.pickup { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border-color: #3b82f6; }
+    .badge.courier { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border-color: #f59e0b; }
+
+    /* =========================================
+       10. RELATED PRODUCTS & REVIEWS
+       ========================================= */
+    .related-products {
+      margin-top: 40px;
+    }
+
+    .related-products h2 {
+      margin-bottom: 24px;
+      font-size: 24px;
+    }
+
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 24px;
+    }
+
+    .product-card {
+      background: var(--card);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      border: 1px solid var(--border);
+      text-decoration: none;
+      color: var(--text);
+      display: block;
+      position: relative;
+    }
+
+    .product-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 24px rgba(0,0,0,.3);
+      border-color: var(--accent);
+    }
+
+    .product-thumb {
+      height: 180px;
+      overflow: hidden;
+      position: relative;
+      background: #000;
+    }
+
+    .product-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .product-card:hover .product-thumb img {
+      transform: scale(1.05);
+    }
+
+    .product-condition {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .product-info {
+      padding: 16px;
+    }
+
+    .product-title {
+      font-size: 16px;
+      margin: 0 0 8px;
+      font-weight: 600;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.4;
+    }
+
+    .product-price {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--success);
+      margin-bottom: 8px;
+    }
+
+    .product-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* Reviews */
+    .review {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .review:last-child { border-bottom: none; }
+    
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+    
+    .stars {
+      color: var(--warning);
+      letter-spacing: 2px;
+      font-size: 14px;
+    }
+    
+    /* Utilities */
+    .hidden { display: none !important; }
+    
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 16px 24px;
+      border-radius: 12px;
+      background: var(--success);
+      color: white;
+      font-weight: 600;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 9999;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .toast.error {
+      background: var(--danger);
+    }
+    .toast.warning {
+        background: var(--warning);
+        color: #0f172a;
+    }
+    
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .grid { grid-template-columns: 1fr; }
+      .product-images { max-width: 600px; margin: 0 auto; }
+    }
+    @media (max-width: 768px) {
+      .actions { flex-direction: column; }
+      .qty-selector { width: 100%; justify-content: center; margin-bottom: 10px; margin-right: 0;}
+      .btn { width: 100%; justify-content: center; }
+      .product-stats { grid-template-columns: repeat(3, 1fr); font-size: 12px; }
+      .products-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <a href="index.html" class="btn ghost" style="width:auto; padding:10px 18px; flex:none;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to Marketplace
+        </a>
+        
+        <div style="display:flex; gap:12px;">
+            <button class="btn ghost" onclick="toggleTheme()" id="themeIcon" style="width:auto; padding:10px 14px; flex:none;">🌙</button>
+            <button class="btn ghost" onclick="window.location.href='cart.html'" style="width:auto; padding:10px 20px; flex:none;">
+                🛒 My Cart
+            </button>
+        </div>
+    </div>
+
+    <div class="grid">
+      
+      <div class="product-images card">
+        <img id="productImage" class="main" src="assets/products/placeholder.jpg" alt="product">
+        <div class="thumbnails" id="thumbnails">
+          <img class="thumb active" id="thumb1" src="">
+          <div class="thumb" style="background:var(--bg); cursor:default; opacity:0.3;"></div>
+          <div class="thumb" style="background:var(--bg); cursor:default; opacity:0.3;"></div>
+          <div class="thumb" style="background:var(--bg); cursor:default; opacity:0.3;"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h1 id="title">Loading Product...</h1>
+        
+        <div class="meta">
+          <div class="meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M20 7h-4V3M4 17h4v4"/>
+              <rect x="9" y="9" width="6" height="6"/>
+            </svg>
+            <span id="condition">...</span>
+          </div>
+          <div class="meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M12 8v4l2 2"/>
+              <circle cx="12" cy="12" r="7"/>
+            </svg>
+            <span id="posted">...</span>
+          </div>
+          <div class="meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span id="location">...</span>
+          </div>
+        </div>
+
+        <div class="price-section">
+          <div class="current-price">RM <span id="price">0.00</span></div>
+        </div>
+
+        <div class="product-stats">
+          <div class="stat-item">
+            <div class="stat-value" id="stockCount">0</div>
+            <div class="stat-label">Stock</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="catName">...</div>
+            <div class="stat-label">Category</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="badgeSummary">...</div>
+            <div class="stat-label">Options</div>
+          </div>
+        </div>
+
+        <div style="line-height:1.7; color:var(--muted); margin-bottom:24px; min-height:60px;" id="description"></div>
+
+        <div style="margin-bottom:24px;">
+            <div style="font-size:11px; text-transform:uppercase; font-weight:bold; color:var(--muted); margin-bottom:10px;">
+                Available Delivery Options
+            </div>
+            <div id="deliveryContainer" class="delivery-options">
+                </div>
+        </div>
+
+        <div class="seller-card">
+          <div class="seller-avatar" id="sellerAvatar"></div>
+          <div class="seller-info" style="flex:1">
+            <h3 id="sellerName" style="margin:0">Seller Name</h3>
+            <div class="seller-stats" style="margin-top:6px;">
+                <span id="sellerPhone">Contact via Chat</span>
+            </div>
+          </div>
+          <button class="btn ghost" id="chatBtn" style="width:auto; padding:10px 20px; font-size:13px; flex:none;">
+            Chat with Seller
+          </button>
+        </div>
+
+        <div class="actions">
+          <div class="qty-selector">
+            <button class="qty-btn" id="btnMinus" onclick="updateQty(-1)">-</button>
+            <input type="text" id="qtyInput" class="qty-input" value="1" readonly>
+            <button class="qty-btn" id="btnPlus" onclick="updateQty(1)">+</button>
+          </div>
+
+          <button class="btn" id="addToCart">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>
+            </svg>
+            Add to Cart
+          </button>
+          <button class="btn buy" id="buyNowBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            Buy Now
+          </button>
+          <button class="btn ghost" id="favBtn" style="flex:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('details')">Item Details</button>
+        <button class="tab" onclick="switchTab('reviews')">Seller Reviews</button>
+        <button class="tab" onclick="switchTab('shipping')">Logistics</button>
+        <button class="tab" onclick="switchTab('safety')">Safety</button>
+      </div>
+
+      <div id="tabContent">
+        <div id="detailsTab">
+          <div class="product-stats" style="margin:0;">
+            <div class="stat-item">
+                <div class="stat-label">Condition</div>
+                <div class="stat-value" id="conditionDetails" style="font-size:16px;">...</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Pickup Location</div>
+                <div class="stat-value" id="logisticsLoc" style="font-size:16px;">...</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Date Listed</div>
+                <div class="stat-value" id="dateDetail" style="font-size:16px;">...</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="reviewsTab" class="hidden">
+            <div id="reviewsList">
+                <p style="text-align:center; padding:40px; color:var(--muted)">Loading reviews...</p>
+            </div>
+        </div>
+
+        <div id="shippingTab" class="hidden">
+          <div style="color: var(--muted); line-height: 1.8;">
+            <p><strong>Pickup Location:</strong> <span id="fullLogisticsLoc">...</span></p>
+            <p><strong>Available Methods:</strong></p>
+            <ul id="logisticsList">
+                </ul>
+          </div>
+        </div>
+
+        <div id="safetyTab" class="hidden">
+            <div style="background:rgba(239,68,68,0.1); border:1px solid var(--danger); padding:24px; border-radius:12px; color:var(--danger);">
+                <h3 style="margin-top:0; font-size:18px;">⚠️ Transaction Safety Warning</h3>
+                <ul style="line-height:1.8; margin-bottom:0; padding-left:20px;">
+                    <li>Never transfer money directly to a seller's personal bank account before receiving the item.</li>
+                    <li>Always meet in a safe, public location on campus (like the Library, Cafeteria, or Student Center).</li>
+                    <li>Inspect the item thoroughly before completing the transaction.</li>
+                    <li>Use the built-in Chat to keep a record of your conversation.</li>
+                </ul>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="related-products">
+      <h2>Similar Products</h2>
+      <div class="products-grid" id="relatedProducts">
+        <p style="color:var(--muted)">Loading suggestions...</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Notification</div>
+
+  <script>
+    // =================================================================
+    // 1. CONFIGURATION
+    // =================================================================
+    const SUPABASE_URL = 'https://dkpnhswjjmjligemxoet.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrcG5oc3dqam1qbGlnZW14b2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTg4MjksImV4cCI6MjA4MTczNDgyOX0.aGk9fC0-u_ClnxfOVh_BH4_Xj-cF7i0_XVydYV_T-RM';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get('id');
+    
+    // Globals for Quantity Logic
+    let maxStock = 1; 
+    let currentQty = 1;
+
+    // =================================================================
+    // 2. MAIN LOGIC
+    // =================================================================
+    async function loadProduct() {
+      if (!productId) return window.location.href = 'index.html';
+
+      // 1. Fetch Product Data (Joined with Seller Profile & Category)
+      const { data: p, error } = await _supabase
+        .from('listings')
+        .select(`
+            *,
+            profiles:seller_id (full_name, phone_number, avatar_url),
+            categories:category_id (name)
+        `)
+        .eq('id', productId)
+        .single();
+
+      if (error || !p) {
+        console.error(error);
+        alert('Product not found or removed.');
+        return window.location.href = 'index.html';
+      }
+
+      // 2. Populate Basic UI
+      document.getElementById('title').innerText = p.title;
+      document.getElementById('price').innerText = p.price.toFixed(2);
+      document.getElementById('description').innerText = p.description || "No description provided.";
+      document.getElementById('condition').innerText = p.condition || 'Used';
+      document.getElementById('conditionDetails').innerText = p.condition || 'Used';
+      document.getElementById('location').innerText = p.pickup_location;
+      document.getElementById('logisticsLoc').innerText = p.pickup_location;
+      document.getElementById('fullLogisticsLoc').innerText = p.pickup_location;
+      document.getElementById('stockCount').innerText = p.stock_quantity;
+      
+      const date = new Date(p.created_at).toLocaleDateString();
+      document.getElementById('posted').innerText = date;
+      document.getElementById('dateDetail').innerText = date;
+      
+      const catName = p.categories?.name || 'General';
+      document.getElementById('catName').innerText = catName;
+
+      // 3. Handle Images
+      const imgUrl = p.image_url ? (p.image_url.startsWith('http') ? p.image_url : `assets/products/${p.image_url}`) : 'https://via.placeholder.com/640x480?text=No+Image';
+      document.getElementById('productImage').src = imgUrl;
+      const thumb1 = document.getElementById('thumb1');
+      thumb1.src = imgUrl; 
+      thumb1.style.display = 'block';
+
+      // 4. Handle Seller Info
+      document.getElementById('sellerName').innerText = p.profiles?.full_name || 'Anonymous';
+      document.getElementById('sellerPhone').innerText = "📞 " + (p.profiles?.phone_number || "Contact via Chat");
+      
+      const sellerImg = p.profiles?.avatar_url 
+        ? (p.profiles.avatar_url.startsWith('http') ? p.profiles.avatar_url : `assets/profiledp/${p.profiles.avatar_url}`) 
+        : 'https://via.placeholder.com/64';
+      document.getElementById('sellerAvatar').innerHTML = `<img src="${sellerImg}">`;
+
+      // 5. Handle Delivery Options (New Feature)
+      const badgeContainer = document.getElementById('deliveryContainer');
+      const listContainer = document.getElementById('logisticsList');
+      const opts = p.delivery_options || ['meetup'];
+      
+      document.getElementById('badgeSummary').innerText = opts.length + " Options";
+      
+      // Clear previous content
+      badgeContainer.innerHTML = '';
+      listContainer.innerHTML = '';
+
+      opts.forEach(opt => {
+          let label = opt;
+          let description = "";
+          
+          if(opt === 'meetup') { label = '🤝 Meetup'; description = "Meet seller on campus to exchange item."; }
+          if(opt === 'pickup') { label = '📍 Self Pickup'; description = "Collect from seller's location."; }
+          if(opt === 'courier') { label = '🚚 Courier (+RM5)'; description = "Delivery to your doorstep via courier service."; }
+          
+          // Add Badge
+          badgeContainer.innerHTML += `<div class="badge ${opt}">${label}</div>`;
+          
+          // Add to Logistics Tab List
+          listContainer.innerHTML += `<li><strong>${label}:</strong> ${description}</li>`;
+      });
+
+      // 6. Stock Logic & Quantity Init
+      maxStock = p.stock_quantity;
+      if (maxStock <= 0) {
+          // Out of Stock Logic
+          document.getElementById('addToCart').disabled = true;
+          document.getElementById('addToCart').innerText = "Out of Stock";
+          document.getElementById('buyNowBtn').disabled = true; // Disable Buy Now as well
+          document.getElementById('qtyInput').value = 0;
+          document.getElementById('btnPlus').disabled = true;
+          document.getElementById('btnMinus').disabled = true;
+      } else {
+          // In Stock - Update button states
+          document.getElementById('btnPlus').disabled = (maxStock === 1);
+          document.getElementById('btnMinus').disabled = true; // Start at 1, so minus disabled
+      }
+
+      // 7. Bind Action Buttons
+      document.getElementById('addToCart').onclick = () => addToCart(p.id);
+      document.getElementById('buyNowBtn').onclick = () => buyNow(p.id);
+      document.getElementById('favBtn').onclick = () => toggleFav(p.id);
+      document.getElementById('chatBtn').onclick = () => location.href = `chat.html?seller=${p.seller_id}&listing=${p.id}`;
+
+      // 8. Load Dynamic Data
+      checkFavStatus(p.id);
+      loadReviews(p.seller_id);
+      loadSimilarProducts(p.category_id, p.id);
+    }
+
+    // =================================================================
+    // 3. QUANTITY LOGIC
+    // =================================================================
+    window.updateQty = (delta) => {
+        let newQty = currentQty + delta;
+        
+        // Min Check
+        if (newQty < 1) newQty = 1;
+        
+        // Max Check
+        if (newQty > maxStock) newQty = maxStock;
+        
+        currentQty = newQty;
+        document.getElementById('qtyInput').value = currentQty;
+        
+        // Update Button States
+        document.getElementById('btnMinus').disabled = (currentQty <= 1);
+        document.getElementById('btnPlus').disabled = (currentQty >= maxStock);
+        
+        // Show warning if user tries to exceed
+        if (currentQty >= maxStock && maxStock > 1 && delta > 0) {
+            showToast(`Max available stock reached (${maxStock})`, 'warning');
+        }
+    };
+
+    // =================================================================
+    // 4. REVIEWS & SIMILAR ITEMS
+    // =================================================================
+    async function loadReviews(sellerId) {
+        // Fetch reviews for this seller from the 'reviews' table
+        const { data: reviews } = await _supabase
+            .from('reviews')
+            .select(`*, profiles:reviewer_id(full_name)`)
+            .eq('seller_id', sellerId)
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        const container = document.getElementById('reviewsList');
+        
+        if(!reviews || reviews.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--muted)">No reviews yet for this seller.</div>';
+            return;
+        }
+
+        container.innerHTML = reviews.map(r => `
+            <div class="review">
+                <div class="review-header">
+                    <strong>${r.profiles?.full_name || 'User'}</strong>
+                    <div class="stars">${'★'.repeat(r.rating)}</div>
+                </div>
+                <div style="color:var(--text); line-height:1.5;">${r.content || 'No written comment.'}</div>
+                <div style="font-size:11px; color:var(--muted); margin-top:8px;">${new Date(r.created_at).toLocaleDateString()}</div>
+            </div>
+        `).join('');
+    }
+
+    async function loadSimilarProducts(catId, currentId) {
+        const { data: items } = await _supabase
+            .from('listings')
+            .select('*')
+            .eq('category_id', catId)
+            .neq('id', currentId)
+            .eq('status', 'active')
+            .limit(4);
+
+        const grid = document.getElementById('relatedProducts');
+        
+        if(!items || items.length === 0) {
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--muted); padding:40px;">No similar products found.</div>';
+            return;
+        }
+
+        grid.innerHTML = items.map(p => {
+            const img = p.image_url.startsWith('http') ? p.image_url : `assets/products/${p.image_url}`;
+            return `
+              <a href="products.html?id=${p.id}" class="product-card">
+                <div class="product-thumb">
+                    <img src="${img}" alt="${p.title}">
+                    <div class="product-condition">${p.condition}</div>
+                </div>
+                <div class="product-info">
+                  <h3 class="product-title">${p.title}</h3>
+                  <div class="product-price">RM ${p.price.toFixed(2)}</div>
+                  <div class="product-meta">
+                    <div class="product-location">📍 ${p.pickup_location}</div>
+                  </div>
+                </div>
+              </a>`;
+        }).join('');
+    }
+
+    // =================================================================
+    // 5. CART & WISHLIST ACTIONS
+    // =================================================================
+    async function addToCart(lid) {
+        if (maxStock <= 0) return showToast("Item out of stock", 'error');
+
+        const { data: { session } } = await _supabase.auth.getSession();
+        if(!session) return alert("Please login to buy items.");
+
+        // Check if item exists in cart first
+        const { data: existingItem } = await _supabase
+            .from('cart')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .eq('listing_id', lid)
+            .maybeSingle();
+
+        if (existingItem) {
+            showToast("Item already in cart!", "warning");
+            return;
+        }
+
+        // Insert new item
+        const { error } = await _supabase.from('cart').insert({
+            user_id: session.user.id,
+            listing_id: lid,
+            quantity: currentQty
+        });
+
+        if(!error) showToast("Added to Cart!");
+        else showToast("Error adding to cart: " + error.message, "error");
+    }
+
+    async function buyNow(lid) {
+        if (maxStock <= 0) return showToast("Item out of stock", 'error');
+
+        const { data: { session } } = await _supabase.auth.getSession();
+        if(!session) return alert("Please login to buy items.");
+
+        // 1. Try to get existing cart item
+        let { data: cartItem, error } = await _supabase
+            .from('cart')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .eq('listing_id', lid)
+            .maybeSingle();
+
+        if (error) {
+            console.error(error);
+            return showToast("Error processing request", "error");
+        }
+
+        // 2. If not exists, insert it
+        if (!cartItem) {
+            const { data: newCartItem, error: insertError } = await _supabase
+                .from('cart')
+                .insert({
+                    user_id: session.user.id,
+                    listing_id: lid,
+                    quantity: currentQty // Use the selected quantity
+                })
+                .select('id')
+                .single();
+
+            if (insertError) {
+                console.error(insertError);
+                return showToast("Error adding to cart", "error");
+            }
+            cartItem = newCartItem;
+        } else {
+            // Update quantity to current selected quantity if already exists
+            await _supabase.from('cart').update({ quantity: currentQty }).eq('id', cartItem.id);
+        }
+
+        // 3. Proceed to checkout
+        sessionStorage.setItem('checkoutItems', JSON.stringify([cartItem.id]));
+        window.location.href = 'payment.html';
+    }
+
+    async function checkFavStatus(lid) {
+        const { data: { session } } = await _supabase.auth.getSession();
+        if(!session) return;
+        const { data } = await _supabase.from('favourites').select('*').eq('listing_id', lid).eq('user_id', session.user.id).single();
+        if(data) updateFavBtnUI(true);
+    }
+
+    async function toggleFav(lid) {
+        const { data: { session } } = await _supabase.auth.getSession();
+        if(!session) return alert("Please login to wishlist items.");
+
+        // Check if already faved
+        const { data } = await _supabase.from('favourites').select('id').eq('listing_id', lid).eq('user_id', session.user.id).single();
+        
+        if(data) {
+            await _supabase.from('favourites').delete().eq('id', data.id);
+            updateFavBtnUI(false); 
+            showToast("Removed from Wishlist");
+        } else {
+            await _supabase.from('favourites').insert({ user_id: session.user.id, listing_id: lid });
+            updateFavBtnUI(true); 
+            showToast("Added to Wishlist");
+        }
+    }
+
+    // =================================================================
+    // 6. UI UTILITIES
+    // =================================================================
+    function updateFavBtnUI(isFav) {
+        const btn = document.getElementById('favBtn');
+        if(isFav) {
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" style="color:var(--danger)"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg> Saved`;
+            btn.style.color = "var(--danger)"; 
+            btn.style.borderColor = "var(--danger)";
+        } else {
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg> Wishlist`;
+            btn.style.color = ""; 
+            btn.style.borderColor = "";
+        }
+    }
+
+    function showToast(msg, type='success') {
+        const t = document.getElementById('toast');
+        t.innerText = msg; 
+        t.classList.add('show');
+        if (type === 'error') {
+            t.classList.add('error');
+        } else if (type === 'warning') {
+            t.classList.add('warning');
+        } else {
+            t.classList.remove('error', 'warning');
+        }
+        setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    function switchTab(tab) {
+        // Update Buttons
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        
+        // Find clicked button by text (robust way)
+        const allTabs = Array.from(document.querySelectorAll('.tab'));
+        const activeTab = allTabs.find(el => el.textContent.toLowerCase().includes(tab.split(' ')[0])); // Match "Seller" in "Seller Reviews"
+        if(activeTab) activeTab.classList.add('active');
+
+        // Hide All Content
+        document.querySelectorAll('#tabContent > div').forEach(c => c.classList.add('hidden'));
+        
+        // Show Target Content
+        const targetId = tab.includes('review') ? 'reviewsTab' : (tab.includes('ship') ? 'shippingTab' : (tab.includes('safe') ? 'safetyTab' : 'detailsTab'));
+        document.getElementById(targetId).classList.remove('hidden');
+    }
+
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        document.getElementById('themeIcon').innerText = next === 'dark' ? '🌙' : '☀️';
+    }
+
+    // Initialize
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    document.getElementById('themeIcon').innerText = savedTheme === 'dark' ? '🌙' : '☀️';
+    
+    // START APP
+    loadProduct();
+  </script>
+</body>
+</html>

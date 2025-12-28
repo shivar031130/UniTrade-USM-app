@@ -1,0 +1,1212 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>UniTrade — Secondhand Marketplace</title>
+	<meta name="description" content="UniTrade marketplace for buying and selling secondhand items" />
+	<!-- Supabase Library -->
+	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+	<script>
+		const openModal = (id) => { document.getElementById(id).classList.add('show'); document.body.style.overflow='hidden'; }
+    const closeModal = (id) => { document.getElementById(id).classList.remove('show'); document.body.style.overflow=''; }
+    const switchModal = (closeId, openId) => { closeModal(closeId); openModal(openId); }
+    
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        document.getElementById('themeIcon').innerText = next === 'dark' ? '🌙' : '☀️';
+    }
+	</script>
+<style>
+		:root[data-theme="dark"]{
+			--bg:#0f172a; --card:#1e293b; --card-hover:#2d3b52; --muted:#94a3b8; --accent:#3b82f6; --accent-hover:#2563eb;
+			--success:#10b981; --gradient-1:#6366f1; --gradient-2:#8b5cf6; --gradient-3:#ec4899;
+			--text:#f1f5f9; --text-secondary:#cbd5e1; --border:rgba(148, 163, 184, 0.1);
+			--shadow:rgba(0,0,0,.3); --input-bg:rgba(15, 23, 42, 0.5);
+            --card-rgb: 30, 41, 59;
+		}
+		:root[data-theme="light"]{
+			--bg:#f8fafc; --card:#ffffff; --card-hover:#f1f5f9; --muted:#64748b; --accent:#3b82f6; --accent-hover:#2563eb;
+			--success:#10b981; --gradient-1:#6366f1; --gradient-2:#8b5cf6; --gradient-3:#ec4899;
+			--text:#0f172a; --text-secondary:#475569; --border:rgba(15, 23, 42, 0.1);
+			--shadow:rgba(0,0,0,.1); --input-bg:#f8fafc;
+            --card-rgb: 255, 255, 255;
+		}
+		* { box-sizing: border-box; }
+		html,body{height:100%; margin:0; padding:0;}
+		body{
+			margin:0; font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+			background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
+			-moz-osx-font-smoothing:grayscale; padding:32px 40px; display:flex; justify-content:center;
+			min-height:100vh; position:relative; overflow-x:hidden; transition:background 0.3s, color 0.3s;
+		}
+		[data-theme="dark"] body::before{
+			content:''; position:absolute; top:0; left:0; right:0; height:600px;
+			background:radial-gradient(ellipse at top, rgba(99, 102, 241, 0.15), transparent 70%);
+			pointer-events:none; z-index:0;
+		}
+		.wrap{width:100%; max-width:1400px; position:relative; z-index:1;}
+		
+		/* Header */
+		header{
+			display:flex; align-items:center; gap:24px; margin-bottom:40px; 
+			padding-bottom:24px; border-bottom:1px solid var(--border);
+			position: sticky; top: 0; /* Keep header visible and above other elements */
+			z-index: 10000;      /* Ensure header stays above page graphics */
+			pointer-events: auto; /* Ensure header and its children receive pointer events */
+        }
+		.brand{display:flex; align-items:center; gap:16px; text-decoration:none; color:inherit; transition:transform 0.2s ease;}
+		.brand:hover{transform:translateY(-2px);}
+		.logo{
+			width:56px; height:56px; border-radius:14px; 
+			background:linear-gradient(135deg,var(--gradient-1),var(--gradient-2)); 
+			display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:22px;
+			box-shadow:0 8px 24px rgba(99, 102, 241, 0.3), 0 0 0 1px rgba(255,255,255,0.1);
+		}
+		.brand h1{font-size:24px; margin:0; font-weight:700; letter-spacing:-0.5px;}
+		.brand div div{font-size:13px; color:var(--muted); margin-top:2px;}
+		.top-actions{margin-left:auto; display:flex; gap:12px; align-items:center;}
+		
+		/* Theme Toggle */
+		.theme-toggle{
+			background:var(--card); padding:8px; border-radius:10px; cursor:pointer; 
+			display:flex; align-items:center; gap:8px; border:1px solid var(--border);
+			transition:all 0.3s;
+		}
+		.theme-toggle:hover{transform:translateY(-2px); box-shadow:0 4px 12px var(--shadow);}
+		.theme-icon{font-size:20px;}
+		
+		/* User Menu */
+		.user-menu{position:relative;}
+		.user-avatar{
+			width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, var(--gradient-1), var(--gradient-2));
+			display:flex; align-items:center; justify-content:center; color:white; font-weight:600; cursor:pointer;
+			border:2px solid var(--border); transition:all 0.3s;
+		}
+		.user-avatar:hover{transform:scale(1.05); box-shadow:0 4px 12px rgba(99, 102, 241, 0.4);}
+		.user-dropdown{
+			position:absolute; top:50px; right:0; background:rgba(var(--card-rgb), 0.7); border-radius:12px;
+			box-shadow:0 8px 24px var(--shadow); min-width:200px; display:none; overflow:hidden;
+			border:1px solid var(--border);
+            /* --- ENHANCEMENT: Add this line for a glassy effect --- */
+			backdrop-filter: blur(10px);
+		}
+		.user-dropdown.show{display:block;}
+		.user-dropdown a{
+			display:block; padding:12px 16px; color:var(--text); text-decoration:none;
+			transition:background 0.2s;
+		}
+		.user-dropdown a:hover{background:var(--card-hover);}
+		
+		.btn{
+			background:linear-gradient(135deg, var(--accent), var(--accent-hover)); 
+			color:white; border:none; padding:12px 20px; border-radius:12px; cursor:pointer; 
+			font-weight:600; font-size:14px; transition:all 0.3s ease;
+			box-shadow:0 4px 12px rgba(59, 130, 246, 0.3);
+			position:relative; overflow:hidden;
+		}
+		.btn::before{
+			content:''; position:absolute; top:0; left:-100%; width:100%; height:100%;
+			background:linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+			transition:left 0.5s ease;
+		}
+		.btn:hover::before{left:100%;}
+		.btn:hover{transform:translateY(-2px); box-shadow:0 6px 20px rgba(59, 130, 246, 0.4);}
+		.btn:active{transform:translateY(0);}
+		.btn.ghost{
+			background:transparent; color:var(--accent); border:1px solid rgba(59, 130, 246, 0.3);
+			box-shadow:none;
+		}
+		.btn.ghost:hover{background:rgba(59, 130, 246, 0.1); border-color:var(--accent);}
+
+
+		/* === NEW: Hero Section === */
+		.hero {
+			display: grid; grid-template-columns: 1fr 1fr; align-items: center;
+			min-height: 500px; padding: 40px 0; margin-bottom: 60px; text-align: left;
+			gap: 40px; position: relative;
+		}
+.hero-content {
+    z-index: 10;
+    /* === ADD THESE LINES === */
+    perspective: 800px; /* Creates the 3D viewing distance */
+    transform-style: preserve-3d; /* Ensures children render in 3D */
+}
+/* Replace your existing .hero h2 rule with this one */
+.hero h2 {
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1.1;
+    margin: 0 0 24px;
+    background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2), var(--gradient-3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-fill-color: transparent;
+    
+    /* === ADDED FOR 3D EFFECT === */
+    cursor: pointer;
+    perspective: 500px; /* This creates the 3D "viewing distance" */
+    transform-style: preserve-3d; /* Ensures children render in 3D */
+}
+/* === ADD ALL OF THESE NEW RULES === */
+
+/* Prepare the individual letter spans for 3D transformation */
+.hero h2 span {
+    display: inline-block;
+    position: relative;
+    transform-origin: bottom; /* Pivot the rotation from the bottom of the letter */
+    animation: none; /* No animation initially */
+}
+
+/* The trigger: when you hover the H2, all the spans inside animate */
+.hero h2:hover span {
+    /* Play the animation. 'forwards' keeps it in the final state when done */
+    animation: water-ripple-3d 1.2s forwards;
+    
+    /* The staggered delay from the JavaScript is automatically used here */
+}
+
+/* The 3D Ripple Animation Definition */
+@keyframes water-ripple-3d {
+    0% {
+        transform: rotateX(0deg) translateY(0);
+        opacity: 1;
+    }
+    25% {
+        /* Dip down and tilt forward, as if a wave trough is passing */
+        transform: rotateX(70deg) translateY(10px);
+        opacity: 0.5;
+    }
+    50% {
+        /* Rise up high and tilt backward, like the crest of the wave */
+        transform: rotateX(-60deg) translateY(-25px);
+        opacity: 1;
+    }
+    75% {
+        /* A smaller secondary bounce as it settles */
+        transform: rotateX(20deg) translateY(-5px);
+    }
+    100% {
+        /* Settle back to the original flat state */
+        transform: rotateX(0deg) translateY(0);
+        opacity: 1;
+    }
+}
+		.hero p {
+			font-size: 1.2rem; color: var(--muted); max-width: 500px;
+			margin: 0 0 32px; line-height: 1.6;
+		}
+		.hero .btn { padding: 16px 32px; font-size: 16px; border-radius: 14px; }
+		
+		.hero-graphics {
+			position: relative; height: 100%; min-height: 400px;
+			perspective: 2000px;
+			/* Allow header buttons to receive clicks even if graphics overlap visually */
+			pointer-events: none;
+		}
+		/* === ADD THIS ENTIRE NEW RULE === */
+/* === ADD THIS ENTIRE NEW RULE === */
+.hero h2:hover {
+    cursor: pointer;
+    
+    /* Stop the continuous animation to give control to the hover state */
+    animation: none;
+    
+    /* 
+     * Flatten the rotation, scale it up slightly, and
+     * bring it 50px closer to the viewer in 3D space.
+     */
+    transform: rotateX(0deg) rotateY(0deg) scale(1.05) translateZ(50px);
+}
+		.graphic-card {
+    position: absolute;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 20px 50px var(--shadow);
+    padding: 16px;
+    backdrop-filter: blur(10px);
+    background: rgba(var(--card-rgb), 0.5); /* Use RGB for transparency */
+    will-change: transform;
+    /* === MODIFIED LINE === */
+    transition: transform 0.1s ease-out, background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+}
+/* Make individual graphic cards interactive while the container ignores pointer events
+   so they don't block header interactions. */
+.graphic-card { pointer-events: auto; }
+
+/* Ensure modals don't block page interactions when hidden */
+.modal-backdrop { pointer-events: none; }
+.modal-backdrop.show { pointer-events: auto; }
+/* === ADD THIS ENTIRE NEW RULE === */
+.graphic-card:hover {
+    cursor: pointer;
+    /* Use the site's gradient for the background, but with transparency */
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.4));
+    
+    /* Use an accent color for the border */
+    border-color: var(--gradient-2);
+    
+    /* Add a colored glow effect with a stronger shadow */
+    box-shadow: 0 25px 60px rgba(139, 92, 246, 0.25);
+}
+
+/* Optional: Make the placeholder content inside the card light up too */
+.graphic-card:hover .gc-thumb,
+.graphic-card:hover .gc-line {
+    background: rgba(255, 255, 255, 0.1);
+}
+		.graphic-card.gc-1 {
+			width: 280px; height: 180px; top: 10%; left: 5%;
+			transform: rotateX(10deg) rotateY(-15deg) rotateZ(-5deg);
+			animation: float 8s ease-in-out infinite;
+		}
+		.graphic-card.gc-2 {
+			width: 240px; height: 320px; top: 25%; left: 45%;
+			transform: rotateX(5deg) rotateY(20deg) rotateZ(8deg);
+			animation: float 10s ease-in-out infinite reverse;
+		}
+		.graphic-card.gc-3 {
+			width: 200px; height: 220px; bottom: 5%; right: 5%;
+			transform: rotateX(-10deg) rotateY(-5deg) rotateZ(3deg);
+			animation: float 12s ease-in-out infinite;
+		}
+		.gc-thumb { width: 100%; height: 60%; background: var(--input-bg); border-radius: 8px; margin-bottom: 12px; }
+		.gc-line { width: 80%; height: 10px; background: var(--input-bg); border-radius: 4px; margin-bottom: 8px; }
+		.gc-line.short { width: 50%; }
+/* === ADD THIS ENTIRE NEW RULE === */
+@keyframes fluid-3d-text {
+    0% {
+        transform: rotateX(0deg) rotateY(0deg);
+        background-position: 0% 50%;
+    }
+    25% {
+        transform: rotateX(8deg) rotateY(-10deg);
+    }
+    50% {
+        transform: rotateX(-6deg) rotateY(10deg);
+        background-position: 100% 50%;
+    }
+    75% {
+        transform: rotateX(4deg) rotateY(6deg);
+    }
+    100% {
+        transform: rotateX(0deg) rotateY(0deg);
+        background-position: 0% 50%;
+    }
+}
+		@keyframes float {
+			0% { transform: translateY(0px) rotateX(10deg) rotateY(-15deg) rotateZ(-5deg); }
+			50% { transform: translateY(-25px) rotateX(12deg) rotateY(-18deg) rotateZ(-3deg); }
+			100% { transform: translateY(0px) rotateX(10deg) rotateY(-15deg) rotateZ(-5deg); }
+		}
+		.gc-2 { animation-name: float2; }
+		@keyframes float2 {
+			0% { transform: translateY(0px) rotateX(5deg) rotateY(20deg) rotateZ(8deg); }
+			50% { transform: translateY(-20px) rotateX(2deg) rotateY(22deg) rotateZ(10deg); }
+			100% { transform: translateY(0px) rotateX(5deg) rotateY(20deg) rotateZ(8deg); }
+		}
+		.gc-3 { animation-name: float3; }
+		@keyframes float3 {
+			0% { transform: translateY(0px) rotateX(-10deg) rotateY(-5deg) rotateZ(3deg); }
+			50% { transform: translateY(-22px) rotateX(-12deg) rotateY(-2deg) rotateZ(5deg); }
+			100% { transform: translateY(0px) rotateX(-10deg) rotateY(-5deg) rotateZ(3deg); }
+		}
+		@media(max-width: 900px) {
+			.hero { grid-template-columns: 1fr; text-align: center; min-height: auto; }
+			.hero p { margin-left: auto; margin-right: auto; }
+			.hero-graphics { display: none; } /* Hide complex graphics on smaller screens */
+		}
+		/* === End Hero Section === */
+
+
+		/* Controls */
+		.controls{display:grid; grid-template-columns:1fr 240px 180px 180px; gap:16px; align-items:center; margin-bottom:32px;}
+		.search{
+			display:flex; background:var(--card); padding:14px 18px; border-radius:14px; 
+			align-items:center; gap:12px; box-shadow:0 4px 16px var(--shadow); border:1px solid var(--border);
+			transition:all 0.3s ease;
+		}
+		.search:focus-within{box-shadow:0 4px 20px rgba(59, 130, 246, 0.3), 0 0 0 2px rgba(59, 130, 246, 0.4);}
+		.search svg{flex-shrink:0;}
+		.search input{border:0; outline:none; font-size:15px; width:100%; padding:2px; background:transparent; color:var(--text);}
+		.search input::placeholder{color:var(--muted);}
+		.select{
+			background:var(--card); padding:12px 16px; border-radius:14px;
+			box-shadow:0 4px 16px var(--shadow); border:1px solid var(--border);
+			transition:all 0.3s ease;
+		}
+		.select:hover{box-shadow:0 6px 20px var(--shadow);}
+		.select label{display:block; font-size:11px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px; font-weight:600;}
+		.select select{background:transparent; color:var(--text); border:none; font-size:14px; font-weight:500; cursor:pointer;}
+		.select select option{background:var(--card); color:var(--text);}
+
+		/* Categories */
+		.categories{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:32px;}
+		.category{
+			background:var(--card); border:1px solid var(--border);
+			padding:10px 18px; border-radius:999px; cursor:pointer; font-size:14px; font-weight:500;
+			transition:all 0.3s ease; color:var(--text-secondary);
+		}
+		.category:hover{border-color:var(--accent); background:rgba(59, 130, 246, 0.1); transform:translateY(-2px);}
+		.category.active{
+			background:linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2)); 
+			border-color:var(--gradient-1); color:var(--text); box-shadow:0 4px 12px rgba(99, 102, 241, 0.3);
+		}
+
+		/* === UPDATED: Grid & Card Styles for 3D Hover === */
+		.grid{
+			display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:24px;
+			/* Add perspective to the parent container for a unified 3D space */
+			perspective: 1000px;
+		}
+		.card{
+			background:var(--card); border-radius:16px;
+			box-shadow:0 8px 24px var(--shadow); border:1px solid var(--border);
+			display:flex; flex-direction:column; gap:0; overflow:hidden;
+			position:relative;
+			/* Set a smooth transition for the transform property */
+			transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+			transform-style: preserve-3d; /* Allow children to exist in 3D space */
+		}
+		.card:hover {
+			box-shadow: 0 20px 50px var(--shadow), 0 0 0 1px rgba(139, 92, 246, 0.5);
+			/* Set a base scale on hover, the JS will add rotation */
+			transform: scale(1.05);
+		}
+		/* Top gradient bar on card */
+		.card::before{
+			content:''; position:absolute; top:0; left:0; right:0; height:4px;
+			background:linear-gradient(90deg, var(--gradient-1), var(--gradient-2), var(--gradient-3));
+			opacity:0; transition:opacity 0.3s ease; z-index: 10;
+		}
+		.card:hover::before{opacity:1;}
+
+		/* New: Hover glow effect pseudo-element */
+		.card::after {
+			content: '';
+			position: absolute;
+			top: 0; left: 0;
+			width: 100%; height: 100%;
+			/* The glow is a radial gradient centered at the mouse position (via CSS vars) */
+			background: radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(139, 92, 246, 0.2), transparent 40%);
+			opacity: 0;
+			transition: opacity 0.4s ease;
+			pointer-events: none; /* Make sure it doesn't block clicks */
+		}
+		.card:hover::after {
+			opacity: 1; /* Show the glow on hover */
+		}
+		/* === End Grid & Card Update === */
+
+		.thumb{
+			background:linear-gradient(135deg,rgba(99, 102, 241, 0.1),rgba(139, 92, 246, 0.1)); 
+			height:200px; display:flex; align-items:center; justify-content:center; 
+			color:var(--muted); font-weight:600; position:relative; overflow:hidden;
+		}
+		.thumb img{object-fit:cover; width:100%; height:100%;}
+		.card > div:not(.thumb){padding:20px;}
+		.card h3{margin:0; font-size:18px; font-weight:600; color:var(--text); letter-spacing:-0.3px;}
+		.meta{display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:14px; margin-top:8px;}
+		.price{
+			color:var(--success); font-weight:700; font-size:20px;
+			text-shadow:0 0 20px rgba(16, 185, 129, 0.3);
+		}
+		.card .actions{display:flex; gap:10px; margin-top:16px; padding:16px 20px; background:var(--input-bg); margin:-20px -20px -20px;}
+		.card .actions .btn{flex:1; padding:10px 16px; font-size:13px;}
+		.card .actions .btn.ghost{border-color:var(--border);}
+
+		/* Modal */
+		.modal-backdrop{
+				position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(8px);
+				display:none; align-items:center; justify-content:center; z-index:11000;
+			animation:fadeIn 0.3s ease;
+		}
+		.modal-backdrop.show{display:flex;}
+		/* Ensure the modal content accepts pointer events and is above the backdrop
+		   (some browsers may require explicit pointer-events on child elements) */
+		.modal { pointer-events: auto; z-index: 11001; }
+		.modal * { pointer-events: auto; }
+		/* CSS-only fallback: show modal when targeted via fragment (#loginModal) */
+		.modal-backdrop:target{ display:flex !important; }
+		@keyframes fadeIn{from{opacity:0;} to{opacity:1;}}
+		.modal{
+			background:var(--card); width:100%; max-width:800px; padding:32px; border-radius:20px;
+			box-shadow:0 20px 60px rgba(0,0,0,.5); border:1px solid var(--border);
+			animation:slideUp 0.3s ease; max-height:90vh; overflow-y:auto;
+		}
+		@keyframes slideUp{from{transform:translateY(30px); opacity:0;} to{transform:translateY(0); opacity:1;}}
+		.modal h2{margin:0 0 24px; font-size:26px; font-weight:700; color:var(--text);}
+		.form-grid{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+		.form-grid > div{display:flex; flex-direction:column; gap:16px;}
+		.form-grid label{font-size:13px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;}
+		input, textarea, select{
+			width:100%; padding:12px 16px; border-radius:10px; border:1px solid var(--border);
+			outline:none; background:var(--input-bg); color:var(--text); font-size:14px;
+			transition:all 0.3s ease;
+		}
+		input::placeholder, textarea::placeholder{color:var(--muted);}
+		input:focus, textarea:focus, select:focus{
+			border-color:var(--accent); box-shadow:0 0 0 3px rgba(59, 130, 246, 0.2);
+		}
+		textarea{min-height:120px; resize:vertical; font-family:inherit;}
+		select option{background:var(--card); color:var(--text);}
+
+		/* Auth Forms */
+		.auth-form{max-width:400px; width:100%;}
+		.auth-form h2{text-align:center;}
+		.auth-form .form-group{margin-bottom:16px;}
+		.auth-form .form-group label{display:block; margin-bottom:8px;}
+		.auth-form .form-footer{text-align:center; margin-top:16px;}
+		.auth-form .form-footer a{color:var(--accent); text-decoration:none;}
+		.auth-form .form-footer a:hover{text-decoration:underline;}
+
+		/* Hidden */
+		.hidden{display:none !important;}
+
+		/* === Site Footer Styles === */
+		.site-footer {
+			margin-top: 80px;
+			padding: 60px 0 30px;
+			border-top: 1px solid var(--border);
+			background: var(--card);
+			/* Negative margins to make it full-width */
+			margin-left: -40px;
+			margin-right: -40px;
+			padding-left: 40px;
+			padding-right: 40px;
+		}
+		.footer-grid {
+			display: grid;
+			grid-template-columns: 2fr 1fr 1fr 2fr;
+			gap: 40px;
+			margin-bottom: 60px;
+		}
+		.footer-column .brand { margin-bottom: 16px; }
+		.footer-column h3 {
+			font-size: 16px;
+			font-weight: 600;
+			margin: 0 0 20px;
+			color: var(--text);
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+		}
+		.footer-column p {
+			color: var(--muted);
+			font-size: 14px;
+			line-height: 1.6;
+			margin: 0;
+		}
+		.footer-about { max-width: 300px; margin-bottom: 24px; }
+
+		.footer-links {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+		}
+		.footer-links a {
+			color: var(--muted);
+			text-decoration: none;
+			font-size: 14px;
+			transition: all 0.2s ease;
+			display: inline-block;
+		}
+		.footer-links a:hover {
+			color: var(--accent);
+			transform: translateX(4px);
+		}
+
+		.social-links { display: flex; gap: 16px; margin-top: 24px; }
+		.social-links a {
+			color: var(--muted);
+			display: block;
+			transition: all 0.2s ease;
+		}
+		.social-links a:hover {
+			color: var(--accent);
+			transform: translateY(-3px);
+		}
+		.social-links svg {
+			width: 24px;
+			height: 24px;
+			fill: none;
+			stroke: currentColor;
+			stroke-width: 2;
+			stroke-linecap: round;
+			stroke-linejoin: round;
+		}
+
+		.newsletter-form { display: flex; gap: 8px; margin-top: 16px; }
+		.newsletter-form input {
+			flex: 1;
+			min-width: 150px;
+		}
+		.newsletter-form .btn {
+			padding-left: 24px;
+			padding-right: 24px;
+		}
+		
+		.footer-bottom {
+			padding-top: 30px;
+			border-top: 1px solid var(--border);
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			font-size: 14px;
+			color: var(--muted);
+		}
+        
+		/* Responsive */
+		@media (max-width:1200px){
+			.grid{grid-template-columns:repeat(auto-fill, minmax(280px,1fr));}
+		}
+		@media (max-width:1024px) {
+			.footer-grid {
+				grid-template-columns: 1fr 1fr;
+				gap: 50px;
+			}
+		}
+		@media (max-width:900px){
+			body{padding:24px 20px;}
+			.controls{grid-template-columns:1fr 160px 140px; gap:12px;}
+			.grid{grid-template-columns:repeat(auto-fill, minmax(250px,1fr)); gap:20px;}
+			.form-grid{grid-template-columns:1fr;}
+		}
+		@media (max-width:768px) {
+			.footer-grid {
+				grid-template-columns: 1fr;
+				gap: 40px;
+				text-align: center;
+			}
+			.footer-about { margin-left: auto; margin-right: auto; }
+			.social-links, .footer-links { justify-content: center; }
+			.footer-links a:hover { transform: none; }
+			.footer-bottom { flex-direction: column; gap: 12px; }
+			.newsletter-form { justify-content: center; }
+			.site-footer {
+				margin-left: -20px;
+				margin-right: -20px;
+				padding-left: 20px;
+				padding-right: 20px;
+			}
+		}
+		@media (max-width:760px){
+			.controls{grid-template-columns:1fr; gap:12px;}
+			header{flex-wrap:wrap;}
+			.top-actions{width:100%; justify-content:space-between;}
+			.grid{grid-template-columns:1fr; gap:16px;}
+		}
+		/* Create listing box inside controls */
+		.createbox{display:flex; align-items:stretch; justify-content:flex-end;}
+		.createbox .btn{width:100%;}
+		@media (max-width:900px){
+			.createbox{grid-column:1 / -1; justify-content:center;}
+			.createbox .btn{max-width:260px;}
+		}
+		/* === ADD THIS ENTIRE NEW RULE === */
+@keyframes gradient-flow {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+* Forms & Inputs */
+        .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.8); display:none; align-items:center; justify-content:center; z-index:1000; backdrop-filter: blur(4px); }
+        .modal-backdrop.show{ display:flex; }
+        .modal{ background:var(--card); padding:30px; border-radius:20px; width:100%; max-width:600px; border:1px solid var(--border); }
+        
+        input:not([type="checkbox"]), select, textarea{ width:100%; padding:12px; margin:8px 0 16px; background:var(--input-bg); border:1px solid var(--border); color:var(--text); border-radius:8px; }
+        label { font-size: 12px; text-transform: uppercase; color: #94a3b8; font-weight: bold; }
+        
+        /* Checkbox Group */
+        .checkbox-group { display: flex; gap: 15px; margin-bottom: 16px; margin-top: 5px; }
+        .checkbox-group label { display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text); font-size: 14px; border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; background: var(--input-bg); }
+        .checkbox-group input { width: auto; margin: 0; }
+        .checkbox-group label:has(input:checked) { border-color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+	</style>
+</head>
+<body>
+	<div class="wrap">
+		<header>
+			<a class="brand" href="index.html">
+				<div class="logo">UT</div>
+				<div>
+					<h1>UniTrade</h1>
+					<div>Buy & sell secondhand items</div>
+				</div>
+			</a>
+			<div class="top-actions">
+				<div class="theme-toggle" id="themeToggle"><span class="theme-icon" id="themeIcon">🌙</span></div>
+				<a href="cart.html" class="btn ghost">Cart</a>
+				<a href="favourites.html" class="btn ghost">Favourites</a>
+				<div id="guestActions">
+					<button class="btn ghost" onclick="openModal('loginModal')">Login</button>
+					<button class="btn" onclick="openModal('registerModal')">Register</button>
+				</div>
+				<div id="userActions" class="hidden">
+    <div class="user-menu">
+        <div class="user-avatar" id="userAvatar">U</div>
+        
+        <div class="user-dropdown" id="userDropdown">
+            <a href="dashboard.html">My Dashboard</a>
+            <a href="chat.html">Messages</a>
+            <a href="admin.html" id="adminLink" class="hidden">Admin Dashboard</a>
+            
+            <hr style="border:0; border-top:1px solid var(--border); margin:0;">
+            <a href="#" id="btnLogout">Logout</a>
+        </div>
+    </div>
+</div>
+			</div>
+		</header>
+		<!-- === NEW: Landing Section === -->
+		<section class="hero">
+			<div class="hero-content">
+				<h2>Your Campus, Your Marketplace.</h2>
+				<p>Discover great deals on textbooks, electronics, furniture, and more from students just like you. Safe, simple, and sustainable.</p>
+				<a href="#listings" class="btn">Explore Listings</a>
+			</div>
+			<div class="hero-graphics" aria-hidden="true">
+				<div class="graphic-card gc-1">
+					<div class="gc-thumb"></div>
+					<div class="gc-line"></div>
+					<div class="gc-line short"></div>
+				</div>
+				<div class="graphic-card gc-2">
+					<div class="gc-thumb"></div>
+					<div class="gc-line"></div>
+					<div class="gc-line short"></div>
+				</div>
+				<div class="graphic-card gc-3">
+					<div class="gc-thumb"></div>
+					<div class="gc-line"></div>
+				</div>
+			</div>
+		</section>
+		<!-- === End Landing Section === -->
+
+		<section class="controls">
+			<div class="search"><span>🔍</span><input id="q" placeholder="Search items..." /></div>
+			<div class="select"><label>Sort</label><select id="sort"><option value="new">Newest First</option><option value="price-asc">Price: Low to High</option><option value="price-desc">Price: High to Low</option></select></div>
+			<div class="select"><label>Category</label><select id="catSelect"><option value="all">All</option></select></div>
+			<div style="display:flex; align-items:center;">
+    <a href="product-listing.html" class="btn ghost">View All</a>
+</div>
+<div id="createBox" class="hidden">
+    <button class="btn" onclick="openModal('listingModal')">Create Listing</button>
+</div>		</section>
+
+        <nav class="categories" id="categoryButtons"></nav>
+
+		<main><div id="listings" class="grid">Loading Marketplace...</div></main>
+
+				<footer class="site-footer">
+			<div class="footer-grid">
+				<!-- Column 1: Brand & About -->
+				<div class="footer-column">
+					<div class="brand">
+						<div class="logo">UT</div>
+						<div>
+							<h1>UniTrade</h1>
+						</div>
+					</div>
+					<p class="footer-about">The ultimate marketplace for students to buy and sell secondhand goods. Safe, simple, and sustainable.</p>
+					<div class="social-links">
+						<a href="#" aria-label="Facebook" title="Facebook"><svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg></a>
+						<a href="#" aria-label="Instagram" title="Instagram"><svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>
+						<a href="#" aria-label="Twitter" title="Twitter"><svg viewBox="0 0 24 24"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg></a>
+					</div>
+				</div>
+
+				<!-- Column 2: Quick Links -->
+				<div class="footer-column">
+					<h3>Quick Links</h3>
+					<ul class="footer-links">
+						<li><a href="#listings">Explore Listings</a></li>
+						<li><a onclick="openModal('listingModal')" id="footerCreateListingBtn">Create a Listing</a></li>
+						<li><a href="how-it-works.html">How It Works</a></li>
+						<li><a href="safety-tips.html">Safety Tips</a></li>
+						<li><a href="faq.html">FAQs</a></li>
+					</ul>
+				</div>
+
+				<!-- Column 3: Legal -->
+				<div class="footer-column">
+					<h3>Legal</h3>
+					<ul class="footer-links">
+						<li><a href="privacy.html">Privacy Policy</a></li>
+						<li><a href="terms.html">Terms of Service</a></li>
+						<li><a href="guidelines.html">Community Guidelines</a></li>
+						<li><a href="cookies.html">Cookie Policy</a></li>
+					</ul>
+				</div>
+
+				<!-- Column 4: Newsletter -->
+				<div class="footer-column">
+					<h3>Stay Updated</h3>
+					<p>Get notified about the latest deals and new features.</p>
+					<form class="newsletter-form">
+						<input type="email" placeholder="your email" required>
+						<button type="submit" class="btn">Subscribe</button>
+					</form>
+				</div>
+			</div>
+			<div class="footer-bottom">
+				<div>© 2025 <strong>UniTrade</strong> — A simple student marketplace.</div>
+				<div style="color:var(--muted)">Made for USM students</div>
+			</div>
+		</footer>
+	</div>
+
+    <!-- Modals -->
+    <div id="loginModal" class="modal-backdrop">
+        <div class="modal auth-form">
+            <h2>Login to UniTrade</h2>
+            <form id="loginForm">
+                <div class="form-group"><label>Email</label><input type="email" id="lEmail" placeholder="your@student.usm.my" required></div>
+                <div class="form-group"><label>Password</label><input type="password" id="lPass" placeholder="••••••••" required></div>
+                <div style="display:flex; gap:8px; margin-top:16px;">
+                    <button type="button" class="btn ghost" onclick="closeModal('loginModal')" style="flex:1">Cancel</button>
+                    <button type="submit" class="btn" style="flex:1">Login</button>
+                </div>
+                <div class="form-footer">
+                    Don't have an account? <a href="#" onclick="switchModal('loginModal','registerModal')">Register here</a><br>
+                    <a href="#" onclick="switchModal('loginModal','forgotPasswordModal')" style="font-size: 13px; color: var(--muted); margin-top: 8px; display: inline-block;">Forgot Password?</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="forgotPasswordModal" class="modal-backdrop">
+        <div class="modal auth-form">
+            <h2>Reset Your Password</h2>
+            <form id="forgotPasswordForm">
+                <div class="form-group">
+                    <label>USM Email Address</label>
+                    <input type="email" id="fEmail" required placeholder="your@student.usm.my" />
+                    <p style="color:var(--muted); font-size:13px; margin-top:12px; line-height:1.5;">Enter your email, and we'll send a reset link.</p>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:16px;">
+                    <button type="button" class="btn ghost" onclick="closeModal('forgotPasswordModal')" style="flex:1">Cancel</button>
+                    <button type="submit" class="btn" style="flex:1">Send link</button>
+                </div>
+                <div class="form-footer"><a href="#" onclick="switchModal('forgotPasswordModal','loginModal')">Back to Login</a></div>
+            </form>
+        </div>
+    </div>
+
+<!-- Register Modal -->
+    <div id="registerModal" class="modal-backdrop">
+        <div class="modal auth-form">
+            <h2>Register for UniTrade</h2>
+            <form id="registerForm">
+                <div class="form-group"><label>Full Name</label><input type="text" id="rName" required></div>
+                <div class="form-group"><label>Email</label><input type="email" id="rEmail" placeholder="yourname@student.usm.my" required></div>
+                <div class="form-group"><label>Password</label><input type="password" id="rPass" required></div>
+                <div class="form-group"><label>Phone Number</label><input type="tel" id="rPhone" required></div>
+                <div class="form-group"><label>Campus</label>
+                    <select id="rCampus">
+<option value="Main Campus">Main Campus</option>
+    <option value="Engineering Block">Engineering Block</option>
+    <option value="Science Block">Health Block</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Profile Picture</label><input type="file" id="rFile" accept="image/*"></div>
+                
+                <!-- Updated Button Section -->
+                <div style="display:flex; gap:10px; margin-top:20px;">
+                    <button type="button" class="btn ghost" onclick="closeModal('registerModal')" style="flex:1">Cancel</button>
+                    <button type="submit" class="btn" style="flex:1">Create Account</button>
+                </div>
+
+                <div class="form-footer">Already have an account? <a href="#" onclick="switchModal('registerModal','loginModal')">Login here</a></div>
+            </form>
+        </div>
+    </div>
+
+<div id="listingModal" class="modal-backdrop">
+    <div class="modal">
+        <h2>Create Listing</h2>
+        <form id="listingForm">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                <div>
+                    <label>Title</label>
+                    <input id="cTitle" required>
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1"><label>Price (RM)</label><input type="number" id="cPrice" step="0.01" required></div>
+                        <div style="width:80px"><label>Qty</label><input type="number" id="cStock" value="1" min="1" required></div>
+                    </div>
+                    <label>Category</label><select id="cCat" required><option>Loading...</option></select>
+                </div>
+                <div>
+                    <label>Condition</label>
+                    <select id="cCond"><option>New</option><option>Like New</option><option>Good</option><option>Fair</option></select>
+                    <label>Pickup Location</label><input id="cLoc" required>
+                    <label>Image</label><input type="file" id="cFile" accept="image/*" required>
+                </div>
+            </div>
+            
+            <label>Delivery Methods Available</label>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="delivery" value="meetup" checked> Meetup</label>
+                <label><input type="checkbox" name="delivery" value="pickup" checked> Self Pickup</label>
+                <label><input type="checkbox" name="delivery" value="courier"> Courier (+RM5)</label>
+            </div>
+
+            <label>Description</label>
+            <textarea id="cDesc"></textarea>
+            
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button type="button" class="btn ghost" style="flex:1" onclick="closeModal('listingModal')">Cancel</button>
+                <button type="submit" class="btn" style="flex:1">Post Listing</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    const SUPABASE_URL = 'https://dkpnhswjjmjligemxoet.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrcG5oc3dqam1qbGlnZW14b2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTg4MjksImV4cCI6MjA4MTczNDgyOX0.aGk9fC0-u_ClnxfOVh_BH4_Xj-cF7i0_XVydYV_T-RM';
+
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window._supabase = _supabase;   
+
+    // =================================================================
+    // 1. AUTH LOGIC
+    // =================================================================
+    async function updateUIState() {
+        const { data: { session } } = await _supabase.auth.getSession();
+
+        if (session) {
+            // --- LOGGED IN ---
+            document.getElementById('guestActions').classList.add('hidden');
+            document.getElementById('userActions').classList.remove('hidden');
+            document.getElementById('createBox').classList.remove('hidden');
+
+            // Fetch Profile
+            const { data: profile } = await _supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+
+            if (profile) {
+                const avatarEl = document.getElementById('userAvatar');
+                
+                // RENDER AVATAR: Check if it's a full URL
+                if (profile.avatar_url && profile.avatar_url.startsWith('http')) {
+                    avatarEl.innerHTML = `
+                        <img src="${profile.avatar_url}" 
+                             style="width:100%; height:100%; object-fit:cover; border-radius:50%; display:block;" 
+                             onerror="this.style.display='none'; this.parentElement.innerText='${profile.full_name ? profile.full_name.charAt(0) : 'U'}'">
+                    `;
+                } else {
+                    avatarEl.innerHTML = ""; 
+                    avatarEl.innerText = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : 'U';
+                }
+
+                // Show Admin Link
+                if (profile.role === 'admin') {
+                    document.getElementById('adminLink').classList.remove('hidden');
+                }
+            }
+
+            // Logout Handler
+            document.getElementById('btnLogout').onclick = async (e) => {
+                e.preventDefault();
+                await _supabase.auth.signOut();
+                window.location.reload();
+            };
+
+            setupDropdown();
+        } else {
+            // --- GUEST ---
+            document.getElementById('guestActions').classList.remove('hidden');
+            document.getElementById('userActions').classList.add('hidden');
+            document.getElementById('createBox').classList.add('hidden');
+        }
+    }
+
+    function setupDropdown() {
+        const avatar = document.getElementById('userAvatar');
+        const dropdown = document.getElementById('userDropdown');
+        avatar.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('show'); };
+        window.onclick = () => { if (dropdown.classList.contains('show')) dropdown.classList.remove('show'); };
+    }
+
+    // =================================================================
+    // 2. FORM HANDLERS
+    // =================================================================
+    
+    // --- LOGIN ---
+    async function handleLogin(e) {
+        e.preventDefault();
+        const email = document.getElementById('lEmail').value;
+        const password = document.getElementById('lPass').value;
+        
+        const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+        
+        if (error) {
+            alert(error.message);
+            return;
+        }
+
+        // Check if Admin
+        if (data.user) {
+            const { data: profile } = await _supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', data.user.id)
+                .single();
+            
+            if (profile && profile.role === 'admin') {
+                window.location.href = 'admin.html';
+            } else {
+                window.location.reload();
+            }
+        }
+    }
+
+    // --- REGISTER (Fixes Avatar & Campus Issue) ---
+    async function handleRegister(e) {
+        e.preventDefault();
+        
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Creating Account...";
+
+        const email = document.getElementById('rEmail').value;
+        const password = document.getElementById('rPass').value;
+        const fullName = document.getElementById('rName').value;
+        const phone = document.getElementById('rPhone').value;
+        const campus = document.getElementById('rCampus').value; // Ensure this is not empty
+    // --- VALIDATION CHECK: MUST BE USM EMAIL ---
+    		if (!email.endsWith('@student.usm.my')) {
+        		alert("Registration is restricted to USM students only.\nPlease use your @student.usm.my email address.");
+        		submitBtn.disabled = false;
+        		submitBtn.innerText = "Create Account";
+        	return; // Stop execution here
+    	}
+        // 1. Handle Avatar Upload
+        let finalAvatarUrl = ""; // Default empty
+        const fileInput = document.getElementById('rFile');
+        const file = fileInput.files[0];
+
+        if (file) {
+            // Create unique name
+            const fileName = `avatars/${Date.now()}_${file.name.replace(/\s/g, '_')}`;
+            
+            // Upload
+            const { error: uploadError } = await _supabase.storage
+                .from('images')
+                .upload(fileName, file);
+
+            if (uploadError) {
+                console.warn("Avatar upload failed:", uploadError);
+            } else {
+                // Get Full Public URL
+                const { data } = _supabase.storage.from('images').getPublicUrl(fileName);
+                finalAvatarUrl = data.publicUrl;
+            }
+        }
+
+        // 2. Sign Up (Send data to Trigger)
+        const { error } = await _supabase.auth.signUp({
+            email, 
+            password,
+            options: { 
+                data: { 
+                    full_name: fullName, 
+                    phone_number: phone, 
+                    avatar_url: finalAvatarUrl, // This sends the full link
+                    campus_location: campus     // This sends the campus string
+                } 
+            }
+        });
+
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Create Account";
+
+        if(error) {
+            alert(error.message); 
+        } else { 
+            alert("Registration successful! Please wait for admin approval."); 
+            closeModal('registerModal'); 
+        }
+    }
+
+    // --- FORGOT PASSWORD (New Function) ---
+    async function handleForgotPassword(e) {
+        e.preventDefault();
+        const email = document.getElementById('fEmail').value;
+        const btn = e.target.querySelector('button[type="submit"]');
+        
+        btn.disabled = true;
+        btn.innerText = "Sending...";
+
+        // This sends the email using the Supabase template
+        // Note: You should ideally have a page like 'reset-password.html' to redirect to.
+        // For now, it will redirect to your site URL.
+        const { error } = await _supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin + '/reset-password.html?reset=true'
+        });
+
+        btn.disabled = false;
+        btn.innerText = "Send link";
+
+        if (error) {
+            alert("Error: " + error.message);
+        } else {
+            alert("Password reset link sent! Check your email.");
+            closeModal('forgotPasswordModal');
+        }
+    }
+
+    // --- CREATE LISTING ---
+    async function handleListing(e) {
+        e.preventDefault();
+        const { data: { session } } = await _supabase.auth.getSession();
+        if(!session) return alert("Login required.");
+        
+        const btn = e.target.querySelector('button[type="submit"]');
+        btn.innerText = "Uploading..."; btn.disabled = true;
+
+        try {
+            const deliveryOpts = Array.from(document.querySelectorAll('input[name="delivery"]:checked')).map(cb => cb.value);
+            if(deliveryOpts.length === 0) throw new Error("Select at least one delivery method.");
+
+            const file = document.getElementById('cFile').files[0];
+            if(!file) throw new Error("Image required");
+            const fname = `${Date.now()}_${file.name.replace(/\s/g,'')}`;
+            const { error: upErr } = await _supabase.storage.from('images').upload(fname, file);
+            if(upErr) throw upErr;
+            const { data: { publicUrl } } = _supabase.storage.from('images').getPublicUrl(fname);
+
+            const { error: dbErr } = await _supabase.from('listings').insert({
+                seller_id: session.user.id,
+                title: document.getElementById('cTitle').value,
+                description: document.getElementById('cDesc').value,
+                price: parseFloat(document.getElementById('cPrice').value),
+                stock_quantity: parseInt(document.getElementById('cStock').value),
+                category_id: parseInt(document.getElementById('cCat').value),
+                condition: document.getElementById('cCond').value,
+                pickup_location: document.getElementById('cLoc').value,
+                image_url: publicUrl,
+                delivery_options: deliveryOpts,
+                status: 'pending'
+            });
+            if(dbErr) throw dbErr;
+            alert("Listing posted!"); window.location.reload();
+        } catch(err) {
+            alert(err.message); btn.disabled=false; btn.innerText="Post Listing";
+        }
+    }
+
+    // =================================================================
+    // 3. DATA LOADING
+    // =================================================================
+    async function loadCategories() {
+        const { data } = await _supabase.from('categories').select('*');
+        if(data) {
+            const sel = document.getElementById('cCat'); 
+            const nav = document.getElementById('categoryButtons');
+            const filter = document.getElementById('catSelect');
+            
+            if (nav) nav.innerHTML = `<button class="category active" onclick="loadItems('all')">All</button>`;
+            if (sel) sel.innerHTML = "";
+            if (filter) filter.innerHTML = `<option value="all">All</option>`;
+            
+            data.forEach(c => {
+                if (sel) sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                if (filter) filter.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                if (nav) nav.innerHTML += `<button class="category" onclick="loadItems(${c.id})">${c.name}</button>`;
+            });
+        }
+    }
+
+    async function loadItems(catId = 'all') {
+        if(typeof catId === 'number' || catId === 'all'){
+             document.querySelectorAll('.category').forEach(b => b.classList.remove('active'));
+        }
+
+        let q = _supabase.from('listings').select('*').eq('status','active');
+        if(catId !== 'all') q = q.eq('category_id', catId);
+        
+        const search = document.getElementById('q').value;
+        if(search) q = q.ilike('title', `%${search}%`);
+
+        const sort = document.getElementById('sort').value;
+        if(sort === 'price-asc') q = q.order('price', {ascending:true});
+        else if(sort === 'price-desc') q = q.order('price', {ascending:false});
+        else q = q.order('created_at', {ascending:false});
+
+        const { data } = await q;
+        const grid = document.getElementById('listings');
+        
+        if(data && data.length) {
+            grid.innerHTML = data.map(i => {
+                const src = i.image_url.startsWith('http') ? i.image_url : `assets/products/${i.image_url}`;
+                return `
+                <div class="card" onclick="location.href='products.html?id=${i.id}'">
+                    <div class="thumb">
+                        <img src="${src}" 
+                             onerror="this.src='https://via.placeholder.com/300?text=No+Image'" 
+                             alt="${i.title}">
+                    </div>
+                    <div style="padding:16px">
+                        <h3 style="margin:0 0 8px; font-size:16px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${i.title}</h3>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="color:var(--success); font-weight:bold;">RM ${i.price}</span>
+                            <span style="font-size:12px; color:var(--muted)">${i.pickup_location}</span>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        } else {
+            grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; color:var(--muted); padding:40px;">No items found.</p>`;
+        }
+    }
+
+    // =================================================================
+    // 4. INITIALIZATION
+    // =================================================================
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Theme
+        const t = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+        document.getElementById('themeIcon').innerText = t === 'dark' ? '🌙' : '☀️';
+        
+        // Listeners
+        document.getElementById('themeToggle').onclick = toggleTheme;
+        document.getElementById('loginForm').onsubmit = handleLogin;
+        document.getElementById('registerForm').onsubmit = handleRegister;
+        document.getElementById('listingForm').onsubmit = handleListing;
+        
+        // *** Added Forgot Password Listener ***
+        document.getElementById('forgotPasswordForm').onsubmit = handleForgotPassword;
+        
+        // Search & Filter
+        document.getElementById('q').oninput = () => loadItems(document.getElementById('catSelect').value === 'all' ? 'all' : parseInt(document.getElementById('catSelect').value));
+        document.getElementById('sort').onchange = () => loadItems(document.getElementById('catSelect').value === 'all' ? 'all' : parseInt(document.getElementById('catSelect').value));
+        document.getElementById('catSelect').onchange = (e) => loadItems(e.target.value === 'all' ? 'all' : parseInt(e.target.value));
+
+        // Logic Init
+        await updateUIState();
+        loadCategories();
+        loadItems();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Order Tracking — UniTrade</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* === THEME VARIABLES === */
+    :root[data-theme="dark"]{
+      --bg:#0f172a; --card:rgba(30, 41, 59, 0.7); --muted:#94a3b8; 
+      --accent:#3b82f6; --text:#f1f5f9; --border:rgba(148, 163, 184, 0.2); 
+      --success: #10b981; --warning: #f59e0b;
+    }
+    :root[data-theme="light"]{
+      --bg:#f1f5f9; --card:rgba(255, 255, 255, 0.7); --muted:#64748b; 
+      --accent:#3b82f6; --text:#0f172a; --border:rgba(15, 23, 42, 0.1); 
+      --success: #10b981; --warning: #f59e0b;
+    }
+    
+    * { box-sizing: border-box; }
+    body{
+      margin:0; font-family:Inter, sans-serif; background:var(--bg); color:var(--text);
+      min-height: 100vh;
+    }
+    .container{max-width:900px; margin:0 auto; padding: 40px 20px;}
+    
+    /* Header */
+    header{
+        display:flex; align-items:center; gap:24px; padding:20px 40px; border-bottom:1px solid var(--border);
+        background: var(--bg); margin-bottom: 20px;
+    }
+    .brand{display:flex; align-items:center; gap:16px; text-decoration:none; color:inherit; font-weight:700; font-size:20px;}
+    
+    /* Buttons */
+    .btn{
+      background:var(--accent); color:white; border:none; padding:12px 20px; border-radius:10px; 
+      cursor:pointer; font-weight: 600; font-size: 14px; text-decoration: none; display: inline-flex;
+      align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease;
+    }
+    .btn:hover { transform: translateY(-2px); opacity: 0.9; }
+    .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn.success { background: var(--success); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Main Info Header */
+    .tracking-header {
+      background: var(--card); backdrop-filter: blur(10px); padding: 24px;
+      border-radius: 16px; border: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 2rem;
+    }
+    .tracking-header .label { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .tracking-header .value { font-weight: 700; font-size: 1.1rem; margin-top: 4px; }
+    .tracking-header .status { color: var(--accent); font-size: 1.4rem; }
+
+    /* Layout */
+    .tracking-layout { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 32px; align-items: flex-start; }
+
+    /* Timeline */
+    .timeline-card { background: var(--card); padding: 24px; border-radius: 16px; border: 1px solid var(--border); }
+    .timeline { list-style: none; padding: 0; margin: 0; position: relative; }
+    
+    /* Vertical Line */
+    .timeline::before { 
+        content: ''; position: absolute; top: 15px; left: 19px; bottom: 15px; width: 2px; background: var(--border); z-index: 0; 
+    }
+    .timeline-progress { 
+        position: absolute; top: 15px; left: 19px; width: 2px; background: var(--success);
+        height: var(--progress-height, 0%); transition: height 1s ease-out; z-index: 1;
+    }
+    
+    .timeline-item { position: relative; padding-left: 50px; margin-bottom: 30px; z-index: 2; opacity: 0.5; transition: 0.3s; }
+    .timeline-item:last-child { margin-bottom: 0; }
+    .timeline-item.active, .timeline-item.completed { opacity: 1; }
+    
+    .timeline-dot {
+      position: absolute; left: 0; top: 0;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--bg); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; transition: all 0.3s ease;
+    }
+    .timeline-item.completed .timeline-dot { border-color: var(--success); color: var(--success); background: rgba(16, 185, 129, 0.1); }
+    .timeline-item.active .timeline-dot { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+    
+    .timeline-content h3 { margin: 0 0 4px; font-size: 16px; }
+    .timeline-content p { margin: 0; font-size: 13px; color: var(--muted); }
+
+    /* Order Details Side */
+    .details-card { background: var(--card); padding: 24px; border-radius: 16px; border: 1px solid var(--border); }
+    .detail-row { display: flex; justify-content: space-between; font-size: 14px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row span:first-child { color: var(--muted); }
+    .detail-row span:last-child { font-weight: 600; text-align: right; }
+    
+    .product-preview { display: flex; gap: 15px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+    .product-preview img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: #000; }
+    
+    /* Review Form */
+    #reviewSection { max-height: 0; overflow: hidden; transition: all 0.5s ease-in-out; margin-top: 20px; }
+    #reviewSection.visible { max-height: 500px; }
+    .review-form { background: var(--card); padding: 24px; border-radius: 16px; border: 1px solid var(--border); }
+    .star-rating { display: flex; gap: 8px; margin-bottom: 16px; cursor: pointer; justify-content: center; }
+    .star-rating svg { width: 32px; height: 32px; color: var(--border); transition: 0.2s; }
+    .star-rating svg.filled { color: var(--warning); fill: var(--warning); }
+    textarea { width: 100%; min-height: 80px; padding: 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); color: var(--text); outline: none; margin-bottom: 15px; }
+    textarea:focus { border-color: var(--accent); }
+
+    @media(max-width: 768px) { .tracking-layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html">UniTrade</a>
+    <div style="margin-left:auto; display:flex; gap:10px;">
+        <a href="dashboard.html" class="btn ghost">My Dashboard</a>
+        <a href="index.html" class="btn ghost">Home</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="loading" style="text-align:center; padding:40px; color:var(--muted)">Loading transaction details...</div>
+    
+    <div id="mainContent" style="display:none;">
+        <div class="tracking-header">
+            <div>
+                <div class="label">Transaction ID</div>
+                <div class="value" id="txIdDisplay">...</div>
+            </div>
+            <div style="text-align:right;">
+                <div class="label">Status</div>
+                <div class="value status" id="statusDisplay">...</div>
+            </div>
+        </div>
+
+        <div class="tracking-layout">
+            <div class="timeline-card">
+                <ul class="timeline" id="timelineList">
+                    <div class="timeline-progress" id="progressBar"></div>
+                    </ul>
+                
+                <div id="actionArea" style="margin-top: 30px;">
+                    <button id="markReceivedBtn" class="btn success" style="width: 100%;">
+                        ✓ Mark Order as Received
+                    </button>
+                    <div id="completedMsg" style="display:none; text-align:center; background:rgba(16,185,129,0.1); color:var(--success); padding:15px; border-radius:10px; font-weight:600;">
+                        ✓ Order Completed
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="details-card">
+                    <h3 style="margin-top:0;">Order Summary</h3>
+                    <div class="detail-row"><span>Date Placed</span><span id="dateDisplay">...</span></div>
+                    <div class="detail-row"><span>Seller</span><span id="sellerDisplay">...</span></div>
+                    <div class="detail-row"><span>Payment</span><span id="paymentDisplay">...</span></div>
+                    <div class="detail-row"><span>Total</span><span id="amountDisplay" style="color:var(--success)">...</span></div>
+                    
+                    <div class="product-preview">
+                        <img id="productImg" src="" alt="Product">
+                        <div>
+                            <div id="productTitle" style="font-weight:600; margin-bottom:4px;">...</div>
+                            <div id="productQty" style="font-size:13px; color:var(--muted)">...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="reviewSection">
+                    <div class="review-form">
+                        <h3 style="margin-top:0; text-align:center;">Rate this Seller</h3>
+                        <div class="star-rating" id="starContainer">
+                            </div>
+                        <textarea id="reviewText" placeholder="Write your experience..."></textarea>
+                        <button id="submitReviewBtn" class="btn" style="width:100%">Submit Review</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+
+<script>
+    // 1. SUPABASE CONFIG
+    const SUPABASE_URL = 'https://dkpnhswjjmjligemxoet.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrcG5oc3dqam1qbGlnZW14b2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTg4MjksImV4cCI6MjA4MTczNDgyOX0.aGk9fC0-u_ClnxfOVh_BH4_Xj-cF7i0_XVydYV_T-RM';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const params = new URLSearchParams(window.location.search);
+    const txId = params.get('tx');
+    let currentTx = null;
+    let ratingVal = 0;
+
+    const steps = [
+        { code: 'pending', label: 'Order Placed', icon: '📝' },
+        { code: 'confirmed', label: 'Seller Confirmed', icon: '📦' },
+        { code: 'shipped', label: 'Shipped', icon: '🚚' },
+        { code: 'completed', label: 'Delivered', icon: '🏠' } 
+    ];
+
+    // 3. INIT LOAD
+    async function init() {
+        if (!txId) {
+            document.getElementById('loading').innerText = "No transaction ID provided.";
+            return;
+        }
+
+        const { data: { session } } = await _supabase.auth.getSession();
+        if(!session) return window.location.href = 'index.html';
+
+        const { data: tx, error } = await _supabase
+            .from('transactions')
+            .select(`
+                *,
+                listings:listing_id (id, title, price, image_url),
+                seller:seller_id (id, full_name)
+            `)
+            .eq('id', txId)
+            .single();
+
+        if (error || !tx) {
+            document.getElementById('loading').innerText = "Transaction not found.";
+            return;
+        }
+
+        currentTx = tx;
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+        
+        renderUI();
+    }
+
+    // 4. RENDER UI
+    function renderUI() {
+        // Info Headers
+        document.getElementById('txIdDisplay').innerText = currentTx.id.slice(0, 8).toUpperCase();
+        document.getElementById('statusDisplay').innerText = currentTx.status.toUpperCase();
+        document.getElementById('dateDisplay').innerText = new Date(currentTx.created_at).toLocaleDateString();
+        document.getElementById('sellerDisplay').innerText = currentTx.seller?.full_name || 'Unknown';
+        document.getElementById('paymentDisplay').innerText = (currentTx.payment_method || 'COD').toUpperCase();
+        document.getElementById('amountDisplay').innerText = `RM ${currentTx.amount_paid.toFixed(2)}`;
+        
+        // --- FIX: SAFETY CHECK FOR DELETED/HIDDEN ITEMS ---
+        if (currentTx.listings) {
+            document.getElementById('productTitle').innerText = currentTx.listings.title;
+            
+            // Image Logic
+            let imgUrl = 'assets/products/placeholder.jpg';
+            if (currentTx.listings.image_url) {
+                imgUrl = currentTx.listings.image_url.startsWith('http') 
+                    ? currentTx.listings.image_url 
+                    : `assets/products/${currentTx.listings.image_url}`;
+            }
+            document.getElementById('productImg').src = imgUrl;
+        } else {
+            // Fallback if listing is null
+            document.getElementById('productTitle').innerText = "Item Unavailable (Deleted)";
+            document.getElementById('productImg').src = "https://via.placeholder.com/100?text=Deleted";
+        }
+
+        // Always show the quantity from the transaction record (NOT the listing stock)
+        document.getElementById('productQty').innerText = `Ordered Qty: ${currentTx.quantity}`;
+
+
+        // Timeline Logic
+        let currentStepIndex = steps.findIndex(s => s.code === currentTx.status);
+        if (currentTx.status === 'delivered') currentStepIndex = 3; 
+        if (currentStepIndex === -1 && currentTx.status === 'completed') currentStepIndex = 3; // Handle completed mapping
+        if (currentStepIndex === -1) currentStepIndex = 0;
+
+        const timelineList = document.getElementById('timelineList');
+        let html = '';
+        
+        steps.forEach((step, index) => {
+            const isCompleted = index <= currentStepIndex;
+            const isActive = index === currentStepIndex;
+            const statusClass = isCompleted ? 'completed' : '';
+            const activeClass = isActive ? 'active' : '';
+            
+            html += `
+                <li class="timeline-item ${statusClass} ${activeClass}">
+                    <div class="timeline-dot">${isCompleted ? '✔' : step.icon}</div>
+                    <div class="timeline-content">
+                        <h3>${step.label}</h3>
+                        <p>${isCompleted ? 'Completed' : 'Pending'}</p>
+                    </div>
+                </li>
+            `;
+        });
+        timelineList.innerHTML = html; // Clear and set
+        const progressPercent = (currentStepIndex / (steps.length - 1)) * 100;
+        document.getElementById('progressBar').style.height = `${progressPercent}%`;
+
+        // Buttons
+        const btn = document.getElementById('markReceivedBtn');
+        const msg = document.getElementById('completedMsg');
+        const reviewSec = document.getElementById('reviewSection');
+
+        if (currentTx.status === 'completed' || currentTx.status === 'delivered') {
+            if(btn) btn.style.display = 'none';
+            if(msg) msg.style.display = 'block';
+            if(reviewSec) {
+                reviewSec.classList.add('visible');
+                renderStars();
+            }
+        } else {
+            if(btn) {
+                btn.style.display = 'block';
+                btn.onclick = markAsReceived;
+            }
+            if(msg) msg.style.display = 'none';
+            if(reviewSec) reviewSec.classList.remove('visible');
+        }
+    }
+
+    // 5. MARK RECEIVED
+    async function markAsReceived() {
+        if (!confirm("Confirm you received the item?")) return;
+
+        const { error } = await _supabase
+            .from('transactions')
+            .update({ status: 'completed' })
+            .eq('id', txId);
+
+        if (error) alert("Error: " + error.message);
+        else location.reload(); 
+    }
+
+    // 6. REVIEW SYSTEM
+    function renderStars() {
+        const container = document.getElementById('starContainer');
+        if(!container) return;
+        let html = '';
+        for(let i=1; i<=5; i++) {
+            html += `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" 
+                 class="star-icon" data-val="${i}" onclick="setRating(${i})">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>`;
+        }
+        container.innerHTML = html;
+    }
+
+    window.setRating = (val) => {
+        ratingVal = val;
+        document.querySelectorAll('.star-icon').forEach(el => {
+            const v = parseInt(el.dataset.val);
+            if (v <= val) { el.style.fill = '#f59e0b'; el.style.color = '#f59e0b'; } 
+            else { el.style.fill = 'none'; el.style.color = 'var(--border)'; }
+        });
+    }
+
+    const submitBtn = document.getElementById('submitReviewBtn');
+    if(submitBtn) {
+        submitBtn.addEventListener('click', async () => {
+            if (ratingVal === 0) return alert("Please select a rating.");
+            const content = document.getElementById('reviewText').value;
+            const { data: { session } } = await _supabase.auth.getSession();
+
+            const { error } = await _supabase.from('reviews').insert({
+                transaction_id: currentTx.id,
+                reviewer_id: session.user.id,
+                seller_id: currentTx.seller_id,
+                rating: ratingVal,
+                content: content
+            });
+
+            if (error) {
+                alert("Error submitting review: " + error.message);
+            } else {
+                document.getElementById('reviewSection').innerHTML = `
+                    <div style="text-align:center; padding:20px; color:var(--success); font-weight:bold; background:rgba(16,185,129,0.1); border-radius:12px;">
+                        Thank you! Review submitted.
+                    </div>
+                `;
+            }
+        });
+    }
+
+    init();
+</script>
+</body>
+</html>

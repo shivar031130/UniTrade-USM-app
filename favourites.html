@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Favourites — UniTrade</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* === 1. CORE THEME === */
+    :root[data-theme="dark"] {
+      --bg: #0f172a; --card-bg: rgba(30, 41, 59, 0.7); --border: rgba(148, 163, 184, 0.15);
+      --text: #f1f5f9; --muted: #94a3b8; --accent: #3b82f6; --accent-hover: #2563eb;
+      --gradient-1: #6366f1; --gradient-2: #8b5cf6; --gradient-3: #ec4899;
+      --shadow: rgba(0,0,0,.3); --input-bg: rgba(15, 23, 42, 0.5);
+    }
+    /* Light Theme Variables */
+    :root[data-theme="light"] {
+      --bg: #f8fafc; --card-bg: #ffffff; --border: rgba(15, 23, 42, 0.1);
+      --text: #0f172a; --muted: #64748b; --accent: #3b82f6; --accent-hover: #2563eb;
+      --gradient-1: #6366f1; --gradient-2: #8b5cf6; --gradient-3: #ec4899;
+      --shadow: rgba(0,0,0,.1); --input-bg: #f8fafc;
+    }
+
+    body {
+      margin: 0; font-family: 'Inter', system-ui, sans-serif;
+      background-color: var(--bg); color: var(--text); padding: 32px 40px;
+      transition: background 0.3s, color 0.3s;
+      min-height: 100vh;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    
+    /* === 2. HEADER & CONTROLS === */
+    .header {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+      margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border);
+    }
+    h1 { font-size: 2.5rem; font-weight: 700; letter-spacing: -1.5px; margin: 0; }
+    .controls { display: flex; align-items: center; gap: 1rem; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent);
+      color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 0.75rem;
+      cursor: pointer; text-decoration: none; font-weight: 600;
+      transition: all 0.2s ease-in-out;
+    }
+    .btn:hover { background: var(--accent-hover); transform: translateY(-2px); box-shadow: 0 8px 15px rgba(59, 130, 246, 0.2); }
+    .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    
+    .select-wrapper { position: relative; }
+    .select-wrapper select {
+        background-color: var(--input-bg); color: var(--text); border: 1px solid var(--border);
+        padding: 0.75rem 2.5rem 0.75rem 1rem; border-radius: 0.75rem;
+        font-family: inherit; font-weight: 600; font-size: 14px;
+        appearance: none; cursor: pointer; transition: all 0.2s;
+    }
+    
+    /* === 3. GRID & CARDS === */
+    #favGrid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem; padding-bottom: 80px;
+    }
+    .product-card {
+      background-color: var(--card-bg); border-radius: 1rem;
+      border: 1px solid var(--border); overflow: hidden; position: relative;
+      transition: all 0.3s cubic-bezier(0.23, 1, 0.320, 1);
+      animation: card-enter 0.5s ease-out backwards;
+    }
+    .product-card:hover { transform: translateY(-5px); border-color:var(--accent); }
+
+    .product-card__image {
+      width: 100%; height: 220px; background-size: cover; background-position: center;
+      position: relative; background-color: #000;
+    }
+    .product-card__content {
+      padding: 1.25rem;
+      background: linear-gradient(to top, var(--card-bg), rgba(0,0,0,0)); 
+      /* Gradient adjusted for theme compatibility */
+    }
+    .product-card__title { font-weight: 700; font-size: 1.1rem; margin: 0 0 0.5rem 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .product-card__price { font-size: 1.125rem; font-weight: 600; color: var(--accent); }
+    
+    /* ACTIONS (Remove/Add) */
+    .card-actions {
+        position: absolute; top: 1rem; right: 1rem; display: flex; flex-direction: column; gap: 0.5rem;
+        transform: translateX(20px); opacity: 0; transition: all 0.3s ease; z-index: 10;
+    }
+    .product-card:hover .card-actions, .selection-mode .card-actions { transform: translateX(0); opacity: 1; }
+    
+    .action-btn {
+        width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+        background: rgba(0,0,0,0.6); color: white; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        backdrop-filter: blur(4px); transition: 0.2s;
+    }
+    .action-btn:hover { background: var(--accent); border-color: var(--accent); }
+    .action-btn.remove-fav:hover { background: #ef4444; border-color: #ef4444; }
+
+    /* SELECTION MODE */
+    .selection-checkbox {
+        position: absolute; top: 1rem; left: 1rem;
+        width: 24px; height: 24px; display: none; z-index: 10;
+    }
+    .selection-mode .selection-checkbox { display: block; }
+    .selection-checkbox input { display: none; }
+    .selection-checkbox .checkmark {
+        width: 24px; height: 24px; border: 2px solid white; background: rgba(0,0,0,0.5);
+        border-radius: 6px; cursor: pointer; backdrop-filter: blur(5px);
+    }
+    .selection-checkbox input:checked + .checkmark { background: var(--accent); border-color: var(--accent); }
+    .product-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+
+    /* BULK BAR */
+    #bulkActionBar {
+        position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%);
+        width: calc(100% - 40px); max-width: 500px;
+        background: var(--card-bg); border: 1px solid var(--border); backdrop-filter: blur(10px);
+        padding: 1rem; border-radius: 1rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        display: flex; align-items: center; justify-content: space-between;
+        transition: bottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        z-index: 1000;
+    }
+    #bulkActionBar.visible { bottom: 2rem; }
+
+    .empty-state { grid-column: 1 / -1; text-align: center; padding: 4rem 2rem; border: 2px dashed var(--border); border-radius: 1rem; color: var(--muted); }
+    
+    @keyframes card-enter { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .card-removing { transition: 0.3s; opacity: 0; transform: scale(0.9); }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>My Wishlist</h1>
+      <div class="controls">
+        <button class="btn ghost" onclick="toggleTheme()" id="themeIcon">🌙</button>
+        
+        <div class="select-wrapper">
+          <select id="sortFavs">
+            <option value="newest">Sort by: Newest</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+          </select>
+        </div>
+        <button id="selectModeBtn" class="btn ghost">Select</button>
+        <a href="index.html" class="btn">Back to Shop</a>
+      </div>
+    </div>
+
+    <div id="favGrid">Loading...</div>
+  </div>
+  
+  <div id="bulkActionBar">
+    <span id="selectionCount">0 selected</span>
+    <div style="display:flex; gap:10px;">
+      <button id="bulkAddToCart" class="btn ghost" style="font-size:13px; padding:8px 16px;">Add to Cart</button>
+      <button id="bulkRemove" class="btn" style="background:#ef4444; font-size:13px; padding:8px 16px;">Remove</button>
+    </div>
+  </div>
+
+  <script>
+    // =================================================================
+    // 1. SUPABASE CONFIG
+    // =================================================================
+    const SUPABASE_URL = 'https://dkpnhswjjmjligemxoet.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrcG5oc3dqam1qbGlnZW14b2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTg4MjksImV4cCI6MjA4MTczNDgyOX0.aGk9fC0-u_ClnxfOVh_BH4_Xj-cF7i0_XVydYV_T-RM';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let allItems = [];
+    let userId = null;
+
+    // =================================================================
+    // 2. THEME LOGIC
+    // =================================================================
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        document.getElementById('themeIcon').innerText = next === 'dark' ? '🌙' : '☀️';
+    }
+
+    // Init Theme
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    document.getElementById('themeIcon').innerText = savedTheme === 'dark' ? '🌙' : '☀️';
+
+    // =================================================================
+    // 3. MAIN LOGIC
+    // =================================================================
+    async function loadFavs() {
+        const grid = document.getElementById('favGrid');
+        
+        // Auth Check
+        const { data: { session } } = await _supabase.auth.getSession();
+        if(!session) {
+            grid.innerHTML = '<div class="empty-state"><h2>Please Login</h2><p>You need to be logged in to view your wishlist.</p></div>';
+            return;
+        }
+        userId = session.user.id;
+
+        // Fetch Data: Join 'favourites' with 'listings'
+        const { data, error } = await _supabase
+            .from('favourites')
+            .select(`
+                id, 
+                created_at,
+                listings:listing_id (
+                    id, title, price, image_url, pickup_location, seller_id, status
+                )
+            `)
+            .eq('user_id', userId);
+
+        if(error) {
+            console.error(error);
+            grid.innerHTML = '<div class="empty-state">Error loading favourites.</div>';
+            return;
+        }
+
+        if(!data || data.length === 0) {
+            grid.innerHTML = '<div class="empty-state"><h2>Your Wishlist is Empty</h2><p>Go explore and find something you love!</p></div>';
+            return;
+        }
+
+        // Map data to clean structure
+        allItems = data.map(item => ({
+            favId: item.id, // ID of the favourite row (needed to delete)
+            addedAt: new Date(item.created_at).getTime(),
+            ...item.listings // Spread listing details
+        }));
+
+        renderGrid();
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('favGrid');
+        const sort = document.getElementById('sortFavs').value;
+
+        // Sorting
+        let items = [...allItems];
+        if(sort === 'price_asc') items.sort((a,b) => a.price - b.price);
+        if(sort === 'price_desc') items.sort((a,b) => b.price - a.price);
+        if(sort === 'newest') items.sort((a,b) => b.addedAt - a.addedAt);
+
+        grid.innerHTML = items.map(p => {
+            const img = p.image_url.startsWith('http') ? p.image_url : `assets/products/${p.image_url}`;
+            return `
+            <div class="product-card" data-id="${p.id}" data-favid="${p.favId}">
+                <label class="selection-checkbox">
+                    <input type="checkbox" onchange="updateSelection()">
+                    <div class="checkmark"></div>
+                </label>
+                
+                <div class="product-card__image" style="background-image: url('${img}')">
+                    <div class="card-actions">
+                        <button class="action-btn remove-fav" onclick="removeOne('${p.favId}')" title="Remove">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                        <button class="action-btn" onclick="addOneToCart('${p.id}')" title="Add to Cart">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <a href="products.html?id=${p.id}" style="text-decoration:none; color:inherit">
+                    <div class="product-card__content">
+                        <div class="product-card__title">${p.title}</div>
+                        <div class="product-card__price">RM ${p.price.toFixed(2)}</div>
+                    </div>
+                </a>
+            </div>
+            `;
+        }).join('');
+    }
+
+    // =================================================================
+    // 4. ACTIONS
+    // =================================================================
+    
+    // REMOVE SINGLE
+    async function removeOne(favId) {
+        if(!confirm("Remove from wishlist?")) return;
+        
+        // UI Optimistic Update
+        const card = document.querySelector(`[data-favid="${favId}"]`);
+        if(card) card.classList.add('card-removing');
+
+        const { error } = await _supabase.from('favourites').delete().eq('id', favId);
+        if(!error) {
+            allItems = allItems.filter(i => i.favId != favId); // Remove from local data
+            setTimeout(renderGrid, 300); // Re-render after animation
+        } else {
+            alert(error.message);
+            if(card) card.classList.remove('card-removing');
+        }
+    }
+
+    // ADD SINGLE TO CART
+    async function addOneToCart(listingId) {
+        const { error } = await _supabase.from('cart').upsert({
+            user_id: userId,
+            listing_id: listingId,
+            quantity: 1
+        });
+        if(!error) alert("Added to Cart!");
+        else alert(error.message);
+    }
+
+    // SORT LISTENER
+    document.getElementById('sortFavs').onchange = renderGrid;
+
+    // =================================================================
+    // 5. BULK ACTIONS LOGIC
+    // =================================================================
+    const selectBtn = document.getElementById('selectModeBtn');
+    const bulkBar = document.getElementById('bulkActionBar');
+
+    selectBtn.onclick = () => {
+        document.body.classList.toggle('selection-mode');
+        const active = document.body.classList.contains('selection-mode');
+        
+        selectBtn.innerText = active ? "Cancel" : "Select";
+        selectBtn.style.color = active ? "#ef4444" : "";
+        selectBtn.style.borderColor = active ? "#ef4444" : "";
+
+        if(!active) {
+            // Reset
+            bulkBar.classList.remove('visible');
+            document.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+            document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));
+        }
+    };
+
+    window.updateSelection = () => {
+        const checkboxes = document.querySelectorAll('.selection-checkbox input:checked');
+        const count = checkboxes.length;
+        
+        document.getElementById('selectionCount').innerText = `${count} selected`;
+        
+        // Highlight Selected Cards
+        document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));
+        checkboxes.forEach(cb => cb.closest('.product-card').classList.add('selected'));
+
+        if(count > 0) bulkBar.classList.add('visible');
+        else bulkBar.classList.remove('visible');
+    };
+
+    // BULK REMOVE
+    document.getElementById('bulkRemove').onclick = async () => {
+        const checked = document.querySelectorAll('.selection-checkbox input:checked');
+        const ids = Array.from(checked).map(c => c.closest('.product-card').dataset.favid);
+        
+        if(!confirm(`Remove ${ids.length} items?`)) return;
+
+        const { error } = await _supabase.from('favourites').delete().in('id', ids);
+        if(!error) {
+            allItems = allItems.filter(i => !ids.includes(String(i.favId)));
+            renderGrid();
+            bulkBar.classList.remove('visible');
+            document.body.classList.remove('selection-mode'); // Exit mode
+            selectBtn.innerText = "Select";
+        } else {
+            alert(error.message);
+        }
+    };
+
+    // BULK ADD TO CART
+    document.getElementById('bulkAddToCart').onclick = async () => {
+        const checked = document.querySelectorAll('.selection-checkbox input:checked');
+        const listingIds = Array.from(checked).map(c => c.closest('.product-card').dataset.id);
+
+        // Map to insert objects
+        const inserts = listingIds.map(lid => ({
+            user_id: userId,
+            listing_id: lid,
+            quantity: 1
+        }));
+
+        const { error } = await _supabase.from('cart').upsert(inserts);
+        if(!error) {
+            alert(`${listingIds.length} items added to cart!`);
+            document.querySelectorAll('input:checked').forEach(c => c.checked = false);
+            updateSelection(); // Reset UI
+        } else {
+            alert(error.message);
+        }
+    };
+
+    // INIT
+    loadFavs();
+  </script>
+</body>
+</html>

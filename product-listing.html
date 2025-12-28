@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Product Listings — UniTrade</title>
+    <meta name="description" content="Browse all products on UniTrade marketplace" />
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* === EXACT STYLES FROM YOUR FILE === */
+        :root[data-theme="dark"]{
+            --bg:#0f172a; --card:#1e293b; --card-hover:#2d3b52; --muted:#94a3b8; --accent:#3b82f6; --accent-hover:#2563eb;
+            --success:#10b981; --gradient-1:#6366f1; --gradient-2:#8b5cf6; --gradient-3:#ec4899;
+            --text:#f1f5f9; --text-secondary:#cbd5e1; --border:rgba(148, 163, 184, 0.1);
+            --shadow:rgba(0,0,0,.3); --input-bg:rgba(15, 23, 42, 0.5);
+            --card-rgb: 30, 41, 59;
+        }
+        :root[data-theme="light"]{
+            --bg:#f8fafc; --card:#ffffff; --card-hover:#f1f5f9; --muted:#64748b; --accent:#3b82f6; --accent-hover:#2563eb;
+            --success:#10b981; --gradient-1:#6366f1; --gradient-2:#8b5cf6; --gradient-3:#ec4899;
+            --text:#0f172a; --text-secondary:#475569; --border:rgba(15, 23, 42, 0.1);
+            --shadow:rgba(0,0,0,.1); --input-bg:#f8fafc;
+            --card-rgb: 255, 255, 255;
+        }
+        * { box-sizing: border-box; }
+        html,body{height:100%; margin:0; padding:0;}
+        body{
+            margin:0; font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
+            -moz-osx-font-smoothing:grayscale; padding:32px 40px; display:flex; justify-content:center;
+            min-height:100vh; position:relative; overflow-x:hidden; transition:background 0.3s, color 0.3s;
+        }
+        [data-theme="dark"] body::before{
+            content:''; position:absolute; top:0; left:0; right:0; height:600px;
+            background:radial-gradient(ellipse at top, rgba(99, 102, 241, 0.15), transparent 70%);
+            pointer-events:none; z-index:0;
+        }
+        .wrap{width:100%; max-width:1400px; position:relative; z-index:1;}
+        
+        /* Header */
+        header{
+            display:flex; align-items:center; gap:24px; margin-bottom:40px; 
+            padding-bottom:24px; border-bottom:1px solid var(--border);
+            position: relative; z-index: 1000;
+        }
+        .brand{display:flex; align-items:center; gap:16px; text-decoration:none; color:inherit; transition:transform 0.2s ease;}
+        .brand:hover{transform:translateY(-2px);}
+        .logo{
+            width:56px; height:56px; border-radius:14px; 
+            background:linear-gradient(135deg,var(--gradient-1),var(--gradient-2)); 
+            display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:22px;
+            box-shadow:0 8px 24px rgba(99, 102, 241, 0.3), 0 0 0 1px rgba(255,255,255,0.1);
+        }
+        .brand h1{font-size:24px; margin:0; font-weight:700; letter-spacing:-0.5px;}
+        .brand div div{font-size:13px; color:var(--muted); margin-top:2px;}
+        .top-actions{margin-left:auto; display:flex; gap:12px; align-items:center;}
+
+        /* Theme Toggle */
+        .theme-toggle{
+            background:var(--card); padding:8px; border-radius:10px; cursor:pointer; 
+            display:flex; align-items:center; gap:8px; border:1px solid var(--border);
+            transition:all 0.3s;
+        }
+        .theme-toggle:hover{transform:translateY(-2px); box-shadow:0 4px 12px var(--shadow);}
+        .theme-icon{font-size:20px;}
+
+        /* Filters Panel */
+        .filters-panel {
+            background: var(--card); border-radius: 16px; padding: 24px; margin-bottom: 32px;
+            border: 1px solid var(--border); display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 12px; }
+        .filter-group label { font-size: 14px; color: var(--muted); font-weight: 600; }
+        .filter-group select, .filter-group input {
+            background: var(--input-bg); border: 1px solid var(--border);
+            padding: 10px 14px; border-radius: 10px; color: var(--text); font-size: 14px; width: 100%;
+        }
+        .price-inputs { display: flex; gap: 8px; align-items: center; }
+        .price-inputs input { width: 100px; }
+        .price-inputs span { color: var(--muted); }
+        
+        /* Categories */
+        .categories{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:32px;}
+        .category{
+            background:var(--card); border:1px solid var(--border);
+            padding:10px 18px; border-radius:999px; cursor:pointer; font-size:14px; font-weight:500;
+            transition:all 0.3s ease; color:var(--text-secondary);
+        }
+        .category:hover{border-color:var(--accent); background:rgba(59, 130, 246, 0.1); transform:translateY(-2px);}
+        .category.active{
+            background:linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2)); 
+            border-color:var(--gradient-1); color:var(--text); box-shadow:0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Search */
+        .search{
+            display:flex; background:var(--card); padding:14px 18px; border-radius:14px; 
+            align-items:center; gap:12px; box-shadow:0 4px 16px var(--shadow); border:1px solid var(--border);
+            transition:all 0.3s ease; margin-bottom: 24px;
+        }
+        .search:focus-within{box-shadow:0 4px 20px rgba(59, 130, 246, 0.3), 0 0 0 2px rgba(59, 130, 246, 0.4);}
+        .search svg{flex-shrink:0;}
+        .search input{border:0; outline:none; font-size:15px; width:100%; padding:2px; background:transparent; color:var(--text);}
+        .search input::placeholder{color:var(--muted);}
+
+        /* Grid */
+        .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:24px; perspective: 1000px; }
+        .card{
+            background:var(--card); border-radius:16px; box-shadow:0 8px 24px var(--shadow); border:1px solid var(--border);
+            display:flex; flex-direction:column; gap:0; overflow:hidden; position:relative;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1); transform-style: preserve-3d;
+        }
+        .card:hover { box-shadow: 0 20px 50px var(--shadow), 0 0 0 1px rgba(139, 92, 246, 0.5); transform: scale(1.05); }
+        .card::before{
+            content:''; position:absolute; top:0; left:0; right:0; height:4px;
+            background:linear-gradient(90deg, var(--gradient-1), var(--gradient-2), var(--gradient-3));
+            opacity:0; transition:opacity 0.3s ease; z-index: 10;
+        }
+        .card:hover::before{opacity:1;}
+        .thumb{
+            background:linear-gradient(135deg,rgba(99, 102, 241, 0.1),rgba(139, 92, 246, 0.1)); 
+            height:200px; display:flex; align-items:center; justify-content:center; 
+            color:var(--muted); font-weight:600; position:relative; overflow:hidden;
+        }
+        .thumb img{object-fit:cover; width:100%; height:100%;}
+        .card > div:not(.thumb){padding:20px;}
+        .card h3{margin:0; font-size:18px; font-weight:600; color:var(--text); letter-spacing:-0.3px;}
+        .meta{display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:14px; margin-top:8px;}
+        .price{ color:var(--success); font-weight:700; font-size:20px; text-shadow:0 0 20px rgba(16, 185, 129, 0.3); }
+        .card .actions{display:flex; gap:10px; margin-top:16px; padding:16px 20px; background:var(--input-bg); margin:-20px -20px -20px;}
+        .card .actions .btn{flex:1; padding:10px 16px; font-size:13px;}
+        .card .actions .btn.ghost{border-color:var(--border);}
+
+        .btn{
+            background:linear-gradient(135deg, var(--accent), var(--accent-hover)); 
+            color:white; border:none; padding:12px 20px; border-radius:12px; cursor:pointer; 
+            font-weight:600; font-size:14px; transition:all 0.3s ease; box-shadow:0 4px 12px rgba(59, 130, 246, 0.3);
+            position:relative; overflow:hidden;
+        }
+        .btn::before{
+            content:''; position:absolute; top:0; left:-100%; width:100%; height:100%;
+            background:linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition:left 0.5s ease;
+        }
+        .btn:hover::before{left:100%;}
+        .btn:hover{transform:translateY(-2px); box-shadow:0 6px 20px rgba(59, 130, 246, 0.4);}
+        .btn:active{transform:translateY(0);}
+        .btn.ghost{
+            background:transparent; color:var(--accent); border:1px solid rgba(59, 130, 246, 0.3);
+            box-shadow:none;
+        }
+        .btn.ghost:hover{background:rgba(59, 130, 246, 0.1); border-color:var(--accent);}
+
+        .status-message { text-align: center; padding: 40px; color: var(--muted); grid-column: 1/-1; }
+        .loading {
+            display: inline-block; width: 24px; height: 24px; border: 3px solid var(--muted); border-radius: 50%;
+            border-top-color: var(--accent); animation: spin 1s ease-in-out infinite; margin-right: 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width:1200px){ .grid{grid-template-columns:repeat(auto-fill, minmax(280px,1fr));} }
+        @media (max-width:900px){ body{padding:24px 20px;} .grid{grid-template-columns:repeat(auto-fill, minmax(250px,1fr)); gap:20px;} .filters-panel{ grid-template-columns: 1fr; gap: 16px; } }
+        @media (max-width:760px){ header{flex-wrap:wrap;} .top-actions{width:100%; justify-content:space-between;} .grid{grid-template-columns:1fr; gap:16px;} }
+        .hidden{display:none !important;}
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header>
+            <a class="brand" href="index.html" aria-label="UniTrade home">
+                <div class="logo">UT</div>
+                <div><h1>UniTrade</h1><div>Product Listings</div></div>
+            </a>
+
+            <div class="top-actions">
+                <div class="theme-toggle" id="themeToggle" title="Toggle theme"><span class="theme-icon" id="themeIcon">🌙</span></div>
+                <a href="cart.html" class="btn ghost" title="View cart">Cart</a>
+                <a href="favourites.html" class="btn ghost" title="View favourites">Favourites</a>
+                </div>
+        </header>
+
+        <div class="search" role="search">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <input id="searchInput" placeholder="Search items, e.g. 'textbook' or 'desk lamp'" />
+        </div>
+
+        <div class="filters-panel">
+            <div class="filter-group">
+                <label>Category</label>
+                <select id="categoryFilter"><option value="all">All Categories</option></select>
+            </div>
+            <div class="filter-group">
+                <label>Sort By</label>
+                <select id="sortFilter">
+                    <option value="newest">Newest First</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="name-asc">Name: A to Z</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Condition</label>
+                <select id="conditionFilter">
+                    <option value="all">All Conditions</option>
+                    <option value="New">New</option>
+                    <option value="Like New">Like New</option>
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Poor">Poor</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Price Range (RM)</label>
+                <div class="price-inputs">
+                    <input type="number" id="minPrice" placeholder="Min" min="0" />
+                    <span>to</span>
+                    <input type="number" id="maxPrice" placeholder="Max" min="0" />
+                </div>
+            </div>
+        </div>
+
+        <nav class="categories" id="categoryButtons"></nav>
+
+        <main>
+            <div id="listings" class="grid" aria-live="polite"></div>
+        </main>
+    </div>
+
+    <script>
+        // =================================================================
+        // 1. SUPABASE CONFIG
+        // =================================================================
+        const SUPABASE_URL = 'https://dkpnhswjjmjligemxoet.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrcG5oc3dqam1qbGlnZW14b2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTg4MjksImV4cCI6MjA4MTczNDgyOX0.aGk9fC0-u_ClnxfOVh_BH4_Xj-cF7i0_XVydYV_T-RM';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // State
+        let currentFilters = {
+            search: '',
+            category: 'all',
+            sort: 'newest',
+            condition: 'all',
+            minPrice: '',
+            maxPrice: ''
+        };
+
+        // =================================================================
+        // 2. INITIALIZATION
+        // =================================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeTheme();
+            initializeEventListeners();
+            loadCategories();
+            loadProducts();
+        });
+
+        // Theme
+        function initializeTheme() {
+            const t = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            document.getElementById('themeIcon').textContent = t === 'dark' ? '🌙' : '☀️';
+        }
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            document.getElementById('themeIcon').textContent = next === 'dark' ? '🌙' : '☀️';
+        });
+
+        // =================================================================
+        // 3. DATA LOADING
+        // =================================================================
+        
+        async function loadCategories() {
+            const { data } = await _supabase.from('categories').select('*');
+            if (data) {
+                const select = document.getElementById('categoryFilter');
+                const nav = document.getElementById('categoryButtons');
+                
+                // Populate Dropdown
+                select.innerHTML = '<option value="all">All Categories</option>' + 
+                    data.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+                // Populate Buttons
+                nav.innerHTML = `<button class="category active" data-id="all">All</button>` + 
+                    data.map(c => `<button class="category" data-id="${c.id}">${c.name}</button>`).join('');
+
+                // Bind Button Events
+                nav.querySelectorAll('button').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        nav.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        // Sync dropdown
+                        select.value = btn.dataset.id;
+                        currentFilters.category = btn.dataset.id;
+                        loadProducts();
+                    });
+                });
+            }
+        }
+
+        async function loadProducts() {
+            const listingsEl = document.getElementById('listings');
+            listingsEl.innerHTML = '<div class="status-message"><div class="loading"></div>Loading products...</div>';
+
+            // Build Query
+            let query = _supabase.from('listings').select('*, profiles:seller_id(full_name)').eq('status', 'active');
+
+            // Apply Filters
+            if (currentFilters.search) query = query.ilike('title', `%${currentFilters.search}%`);
+            if (currentFilters.category !== 'all') query = query.eq('category_id', currentFilters.category);
+            if (currentFilters.condition !== 'all') query = query.eq('condition', currentFilters.condition);
+            if (currentFilters.minPrice) query = query.gte('price', currentFilters.minPrice);
+            if (currentFilters.maxPrice) query = query.lte('price', currentFilters.maxPrice);
+
+            // Apply Sort
+            if (currentFilters.sort === 'price-asc') query = query.order('price', { ascending: true });
+            else if (currentFilters.sort === 'price-desc') query = query.order('price', { ascending: false });
+            else if (currentFilters.sort === 'name-asc') query = query.order('title', { ascending: true });
+            else query = query.order('created_at', { ascending: false }); // Default Newest
+
+            const { data: products, error } = await query;
+
+            if (error) {
+                console.error(error);
+                listingsEl.innerHTML = '<div class="status-message">Failed to load items.</div>';
+                return;
+            }
+
+            if (!products || products.length === 0) {
+                listingsEl.innerHTML = '<div class="status-message">No products found matching your criteria.</div>';
+                return;
+            }
+
+            // Render
+            listingsEl.innerHTML = products.map(renderProductCard).join('');
+            initializeCardHoverEffects();
+        }
+
+        function renderProductCard(product) {
+            const image = product.image_url && product.image_url.startsWith('http') 
+                ? product.image_url 
+                : `assets/products/${product.image_url || 'placeholder.jpg'}`;
+            
+            const sellerName = product.profiles ? product.profiles.full_name : 'Unknown';
+
+            return `
+                <article class="card" data-id="${product.id}">
+                    <div class="thumb">
+                        <img src="${image}" alt="${product.title}" loading="lazy" onerror="this.src='https://via.placeholder.com/300?text=No+Image'" />
+                    </div>
+                    <div>
+                        <h3>${product.title}</h3>
+                        <div class="meta">
+                            <div class="price">RM ${product.price.toFixed(2)}</div>
+                            <div>${product.pickup_location || 'Campus'}</div>
+                        </div>
+                        <div style="color:var(--muted);font-size:13px;margin-top:8px">
+                            ${product.condition} • Seller: ${sellerName}
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn ghost" onclick="location.href='products.html?id=${product.id}'">View</button>
+                        <button class="btn" onclick="contactSeller('${product.id}')">Contact</button>
+                    </div>
+                </article>
+            `;
+        }
+
+        // =================================================================
+        // 4. EVENTS & UTILS
+        // =================================================================
+        function initializeEventListeners() {
+            // Debounce Helper
+            const debounce = (fn, delay) => {
+                let timer;
+                return (...args) => {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => fn(...args), delay);
+                };
+            };
+
+            // Search
+            document.getElementById('searchInput').addEventListener('input', debounce((e) => {
+                currentFilters.search = e.target.value;
+                loadProducts();
+            }, 300));
+
+            // Select Inputs
+            ['categoryFilter', 'sortFilter', 'conditionFilter'].forEach(id => {
+                document.getElementById(id).addEventListener('change', (e) => {
+                    const key = id.replace('Filter', '');
+                    currentFilters[key] = e.target.value;
+                    
+                    // Sync buttons if category changed via dropdown
+                    if(id === 'categoryFilter') {
+                        document.querySelectorAll('#categoryButtons button').forEach(b => {
+                            b.classList.toggle('active', b.dataset.id === e.target.value);
+                        });
+                    }
+                    loadProducts();
+                });
+            });
+
+            // Price Inputs
+            document.getElementById('minPrice').addEventListener('input', debounce((e) => {
+                currentFilters.minPrice = e.target.value;
+                loadProducts();
+            }, 500));
+            document.getElementById('maxPrice').addEventListener('input', debounce((e) => {
+                currentFilters.maxPrice = e.target.value;
+                loadProducts();
+            }, 500));
+        }
+
+        async function contactSeller(id) {
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (!session) {
+                alert("Please login to contact sellers");
+                return;
+            }
+            // Fetch product to get seller ID
+            const { data } = await _supabase.from('listings').select('seller_id').eq('id', id).single();
+            if(data) {
+                window.location.href = `chat.html?seller=${data.seller_id}&listing=${id}`;
+            }
+        }
+
+        function initializeCardHoverEffects() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                card.addEventListener('mousemove', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    const deltaX = (x - centerX) / centerX;
+                    const deltaY = (y - centerY) / centerY;
+                    card.style.transform = `scale(1.05) rotateY(${deltaX * 5}deg) rotateX(${-deltaY * 5}deg)`;
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = '';
+                });
+            });
+        }
+    </script>
+</body>
+</html>

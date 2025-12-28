@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How It Works — UniTrade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root[data-theme="dark"] { --bg: #0f172a; --card: rgba(30, 41, 59, 0.7); --border: rgba(148, 163, 184, 0.2); --text: #f1f5f9; --muted: #94a3b8; --accent: #3b82f6; }
+    body { margin: 0; font-family: 'Poppins', Inter, system-ui, sans-serif; background-color: var(--bg); color: var(--text); padding: 32px 40px; background-image: radial-gradient(ellipse at top, rgba(59, 130, 246, 0.1), transparent 60%); }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+    h1 { font-size: 2.5rem; font-weight: 700; }
+    h2 { font-size: 1.75rem; text-align: center; margin-bottom: 2rem; }
+    .btn { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent); color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 0.75rem; cursor: pointer; text-decoration: none; font-weight: 600; transition: all 0.2s ease-in-out; }
+    .btn:hover { transform: translateY(-2px); }
+    .steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
+    .step-card { background: var(--card); backdrop-filter: blur(10px); border-radius: 1rem; border: 1px solid var(--border); padding: 1.5rem; text-align: center; }
+    .step-card .step-number { font-size: 2rem; font-weight: 700; color: var(--accent); margin-bottom: 1rem; }
+    .step-card h3 { margin: 0 0 0.5rem 0; }
+    .step-card p { color: var(--muted); line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>UniTrade</h1>
+      <a href="index.html" class="btn">← Back to Marketplace</a>
+    </div>
+    <main>
+      <section style="margin-bottom: 4rem;">
+        <h2>For Buyers</h2>
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-number">01</div><h3>Browse & Discover</h3><p>Explore thousands of items listed by fellow students. Use filters to find exactly what you need.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">02</div><h3>Chat Securely</h3><p>Contact the seller directly through our secure chat to ask questions or arrange a meetup.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">03</div><h3>Meet & Pay</h3><p>Meet the seller in a safe, public place on campus. Inspect the item and pay on the spot.</p>
+          </div>
+        </div>
+      </section>
+      <section>
+        <h2>For Sellers</h2>
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-number">01</div><h3>List in Seconds</h3><p>Snap a photo, add a title and price, and post your item. It's fast, free, and easy.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">02</div><h3>Connect with Buyers</h3><p>Receive messages from interested buyers. Agree on a price and a safe place to meet.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">03</div><h3>Get Paid</h3><p>Meet the buyer, hand over your item, and get paid instantly. Declutter and earn cash!</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

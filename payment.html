@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Checkout — UniTrade</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* === CORE THEME === */
+    :root[data-theme="dark"]{
+      --bg:#0f172a; --card:#1e293b; --card-hover:#2d3b52; --muted:#94a3b8; 
+      --accent:#3b82f6; --text:#f1f5f9; --border:rgba(148, 163, 184, 0.15); 
+      --shadow:rgba(0,0,0,.3); --input-bg: #0f172a; --success:#10b981; --warning:#f59e0b;
+      --gradient-1:#6366f1; --gradient-2:#8b5cf6;
+    }
+    :root[data-theme="light"]{
+      --bg:#f8fafc; --card:#ffffff; --card-hover:#f1f5f9; --muted:#64748b; 
+      --accent:#3b82f6; --text:#0f172a; --border:rgba(15, 23, 42, 0.1); 
+      --shadow:rgba(0,0,0,.1); --input-bg: #f8fafc; --success:#10b981; --warning:#f59e0b;
+      --gradient-1:#6366f1; --gradient-2:#8b5cf6;
+    }
+    
+    * { box-sizing: border-box; }
+    body{ margin:0; font-family:'Inter', sans-serif; background:var(--bg); color:var(--text); }
+    
+    /* === HEADER (INDEX UI) === */
+    header{
+        display:flex; align-items:center; gap:24px; padding:20px 40px; border-bottom:1px solid var(--border);
+        background: var(--bg); position: sticky; top: 0; z-index: 100;
+    }
+    .brand{display:flex; align-items:center; gap:16px; text-decoration:none; color:inherit;}
+    .logo{
+        width:48px; height:48px; border-radius:12px; 
+        background:linear-gradient(135deg,var(--gradient-1),var(--gradient-2)); 
+        display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:20px;
+    }
+    .brand h1{font-size:22px; margin:0; font-weight:700;}
+    .brand div div{font-size:12px; color:var(--muted);}
+    .top-actions{margin-left:auto; display:flex; gap:12px; align-items:center;}
+
+    /* === CHECKOUT LAYOUT === */
+    .wrap { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+    .checkout-layout { display: grid; grid-template-columns: 1fr 400px; gap: 32px; align-items: flex-start; }
+    
+    h1.page-title { font-size: 28px; font-weight: 700; margin-bottom: 24px; }
+
+    /* CARD STYLES */
+    .card-section { background: var(--card); padding: 24px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 24px; }
+    .card-section h2 { font-size: 18px; font-weight: 700; margin: 0 0 20px 0; }
+    
+    /* FORMS */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display:block; margin-bottom:8px; font-weight:600; font-size:13px; color:var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
+    input, textarea { 
+        width: 100%; padding: 14px; border-radius: 10px; border: 1px solid var(--border); 
+        background: var(--input-bg); color: var(--text); outline:none; font-family: inherit; transition: 0.2s;
+    }
+    input:focus, textarea:focus { border-color:var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+    
+    /* DELIVERY OPTIONS */
+    .radio-card {
+        display: flex; align-items: center; gap: 12px; padding: 16px; border: 2px solid var(--border);
+        border-radius: 12px; cursor: pointer; transition: 0.2s; margin-bottom: 10px; position: relative;
+    }
+    .radio-card:hover { border-color: var(--accent); background: rgba(59, 130, 246, 0.05); }
+    .radio-card.selected { border-color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+    .radio-card input { width: auto; margin: 0; }
+    
+    /* PAYMENT OPTIONS GRID */
+    .payment-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .payment-option {
+        border: 2px solid var(--border); border-radius: 12px; padding: 20px 10px; cursor: pointer; text-align: center;
+        transition: 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    }
+    .payment-option:hover { border-color: var(--accent); }
+    .payment-option.selected { border-color: var(--accent); background: rgba(59, 130, 246, 0.1); color: var(--accent); }
+    .payment-option svg { width: 24px; height: 24px; }
+    
+    /* CARD DETAILS FORM (Hidden by default) */
+    .card-details-form { display: none; background: var(--bg); padding: 20px; border-radius: 12px; margin-top: 20px; border: 1px solid var(--border); }
+    .card-details-form.visible { display: block; animation: fadeIn 0.3s ease; }
+    
+    /* SUMMARY */
+    .order-summary { background: var(--card); padding: 24px; border-radius: 16px; border: 1px solid var(--border); position:sticky; top:100px; }
+    .summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; }
+    .summary-row.total { font-weight: 800; font-size: 20px; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px; }
+    .summary-row.total span:last-child { color: var(--success); }
+    
+    .btn { 
+        background: linear-gradient(135deg, var(--accent), #2563eb); color: white; width: 100%; 
+        padding: 16px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; font-size:16px; transition:0.2s; 
+    }
+    .btn:hover { opacity:0.9; transform:translateY(-2px); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+    .btn:disabled { opacity: 0.7; cursor: not-allowed; transform:none; box-shadow: none; }
+    .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 16px; width: auto; font-size: 13px; border-radius: 8px; }
+    .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    @keyframes fadeIn { from {opacity:0; transform:translateY(-10px);} to {opacity:1; transform:translateY(0);} }
+    @media(max-width:900px){ .checkout-layout { grid-template-columns: 1fr; } header { padding: 16px 20px; } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="brand" href="index.html">
+        <div class="logo">UT</div>
+        <div>
+            <h1>UniTrade</h1>
+            <div>Secure Checkout</div>
+        </div>
+    </a>
+    <div class="top-actions">
+        <button class="btn ghost" onclick="toggleTheme()" id="themeIcon">🌙</button>
+        <a href="cart.html" class="btn ghost">Back to Cart</a>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <h1 class="page-title">Finalize Order</h1>
+
+    <div class="checkout-layout">
+      <form id="checkoutForm" class="checkout-main">
+        
+        <div class="card-section">
+          <h2>Shipping Information</h2>
+          <div class="form-group"><label>Full Name</label><input id="fullName" required></div>
+          <div class="form-group"><label>Phone Number</label><input id="phone" required></div>
+          <div class="form-group"><label>Address / Meetup Location</label><textarea id="address" rows="3" placeholder="e.g. USM Library Foyer" required></textarea></div>
+        </div>
+
+        <div class="card-section">
+          <h2>Delivery Method</h2>
+          <div class="radio-group">
+            <div class="radio-card selected" onclick="selectDelivery(this, 'meetup')">
+                <input type="radio" name="delivery" value="meetup" checked> 
+                <div style="flex:1">
+                    <div style="font-weight:700">Campus Meetup</div>
+                    <div style="font-size:13px; color:var(--muted)">Meet seller in person</div>
+                </div>
+                <div style="font-weight:700; color:var(--success)">FREE</div>
+            </div>
+            
+            <div class="radio-card" onclick="selectDelivery(this, 'pickup')">
+                <input type="radio" name="delivery" value="pickup"> 
+                <div style="flex:1">
+                    <div style="font-weight:700">Self Pickup</div>
+                    <div style="font-size:13px; color:var(--muted)">Collect from seller's spot</div>
+                </div>
+                <div style="font-weight:700; color:var(--success)">FREE</div>
+            </div>
+
+            <div class="radio-card" onclick="selectDelivery(this, 'courier')">
+                <input type="radio" name="delivery" value="courier"> 
+                <div style="flex:1">
+                    <div style="font-weight:700">Courier Delivery</div>
+                    <div style="font-size:13px; color:var(--muted)">Delivered to your doorstep</div>
+                </div>
+                <div style="font-weight:700; color:var(--text)">+ RM 5.00</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-section">
+          <h2>Payment Method</h2>
+          <div class="payment-grid">
+            <div class="payment-option selected" onclick="selectPayment(this, 'cod')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                <span>COD</span>
+            </div>
+            <div class="payment-option" onclick="selectPayment(this, 'card')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                <span>Card</span>
+            </div>
+            <div class="payment-option" onclick="selectPayment(this, 'fpx')">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path></svg>
+                <span>FPX</span>
+            </div>
+          </div>
+
+          <div id="cardDetails" class="card-details-form">
+            <div style="font-weight:700; margin-bottom:15px; color:var(--accent);">Enter Card Details</div>
+            <div class="form-group"><label>Cardholder Name</label><input id="cardName" placeholder="Name on Card"></div>
+            <div class="form-group"><label>Card Number</label><input id="cardNumber" placeholder="0000 0000 0000 0000" maxlength="19"></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                <div class="form-group"><label>Expiry Date</label><input id="cardExp" placeholder="MM/YY" maxlength="5"></div>
+                <div class="form-group"><label>CVC / CVV</label><input id="cardCvc" placeholder="123" maxlength="3"></div>
+            </div>
+          </div>
+          
+          <p id="paymentNote" style="margin-top:15px; font-size:13px; color:var(--muted); text-align:center;">Pay securely with cash upon receiving your item.</p>
+        </div>
+
+        <button type="submit" class="btn" id="placeOrderBtn">Confirm & Pay</button>
+      </form>
+
+      <div class="order-summary">
+        <h2>Order Summary</h2>
+        <div id="summaryItems" style="margin-bottom:15px; color:var(--muted); font-size:14px;">Loading...</div>
+        <hr style="border-color:var(--border); margin:15px 0;">
+        
+        <div class="summary-row"><span>Subtotal</span><span id="subTotal">RM 0.00</span></div>
+        <div class="summary-row"><span>Admin Fee (10%)</span><span id="adminFee">RM 0.00</span></div>
+        <div class="summary-row"><span>Shipping</span><span id="shipFee">FREE</span></div>
+        
+        <div class="summary-row total"><span>Total to Pay</span><span id="finalTotal">RM 0.00</span></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+    // 1. CONFIG
+    const SUPABASE_URL = 'https://dkpnhswjjmjligemxoet.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrcG5oc3dqam1qbGlnZW14b2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTg4MjksImV4cCI6MjA4MTczNDgyOX0.aGk9fC0-u_ClnxfOVh_BH4_Xj-cF7i0_XVydYV_T-RM';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let checkoutItems = [];
+    let selectedPayment = 'cod';
+    let deliveryCost = 0;
+
+    // 2. INIT
+    async function init() {
+        const { data: { session } } = await _supabase.auth.getSession();
+        if(!session) return window.location.href = 'index.html';
+
+        const selectedIds = JSON.parse(sessionStorage.getItem('checkoutItems') || '[]');
+        if(selectedIds.length === 0) {
+            alert("No items selected.");
+            return window.location.href = 'cart.html';
+        }
+
+        const { data: profile } = await _supabase.from('profiles').select('*').eq('id', session.user.id).single();
+        if(profile) {
+            document.getElementById('fullName').value = profile.full_name || '';
+            document.getElementById('phone').value = profile.phone_number || '';
+        }
+
+        const { data: cart } = await _supabase
+            .from('cart')
+            .select(`id, quantity, listing_id, listings:listing_id (id, title, price, seller_id)`)
+            .in('id', selectedIds);
+
+        if(!cart || cart.length === 0) return window.location.href = 'cart.html';
+
+        checkoutItems = cart;
+        renderSummary();
+    }
+
+    // 3. RENDER
+    function renderSummary() {
+        let sub = 0;
+        const html = checkoutItems.map(item => {
+            const price = parseFloat(item.listings.price);
+            const qty = parseInt(item.quantity);
+            const total = price * qty;
+            sub += total;
+            return `<div class="summary-row"><span>${item.listings.title} (x${qty})</span><span>RM ${total.toFixed(2)}</span></div>`;
+        }).join('');
+
+        const admin = sub * 0.10; // 10%
+        const total = sub + admin + deliveryCost;
+
+        document.getElementById('summaryItems').innerHTML = html;
+        document.getElementById('subTotal').innerText = `RM ${sub.toFixed(2)}`;
+        document.getElementById('adminFee').innerText = `RM ${admin.toFixed(2)}`;
+        document.getElementById('shipFee').innerText = deliveryCost === 0 ? 'FREE' : `RM ${deliveryCost.toFixed(2)}`;
+        document.getElementById('finalTotal').innerText = `RM ${total.toFixed(2)}`;
+    }
+
+    // 4. UI HANDLERS
+    window.selectDelivery = (el, type) => {
+        document.querySelectorAll('.radio-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        el.querySelector('input').checked = true;
+        deliveryCost = type === 'courier' ? 5.00 : 0.00;
+        renderSummary();
+    };
+
+    window.selectPayment = (el, type) => {
+        document.querySelectorAll('.payment-option').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedPayment = type;
+        
+        const cardForm = document.getElementById('cardDetails');
+        const note = document.getElementById('paymentNote');
+        
+        if(type === 'card') {
+            cardForm.classList.add('visible');
+            note.innerText = "Payment is encrypted and secure.";
+        } else {
+            cardForm.classList.remove('visible');
+            note.innerText = type === 'cod' ? "Pay cash securely upon meeting." : "Redirecting to secure banking gateway...";
+        }
+    };
+
+    // 5. SUBMIT (FIXED CALCULATIONS)
+    document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('placeOrderBtn');
+        btn.disabled = true; btn.innerText = "Processing...";
+
+        await new Promise(r => setTimeout(r, 2000));
+
+        const { data: { session } } = await _supabase.auth.getSession();
+        const address = document.getElementById('address').value;
+        const shipMethod = document.querySelector('input[name="delivery"]:checked').value;
+
+        try {
+            const createdTxIds = [];
+            let payDetails = { note: "Web Checkout" };
+            if(selectedPayment === 'card') {
+                const num = document.getElementById('cardNumber').value;
+                payDetails = { card_last4: num.slice(-4), card_holder: document.getElementById('cardName').value };
+            }
+
+            for (const item of checkoutItems) {
+                // Ensure Numbers
+                const price = parseFloat(item.listings.price);
+                const qty = parseInt(item.quantity);
+                
+                // --- FINANCIAL LOGIC ---
+                const basePrice = price * qty;
+                const adminFee = basePrice * 0.10; // Buyer pays extra 10%
+                const shipFee = deliveryCost / checkoutItems.length;
+                const totalPaid = basePrice + adminFee + shipFee; // What buyer pays
+                
+                // Seller Revenue = The Price of the Item (Buyer covered the fees)
+                const sellerRevenue = basePrice; 
+
+                // A. INSERT TRANSACTION
+                const { data: tx, error: txErr } = await _supabase.from('transactions').insert({
+                    buyer_id: session.user.id,
+                    listing_id: item.listings.id,
+                    seller_id: item.listings.seller_id,
+                    quantity: qty,
+                    amount_paid: totalPaid,
+                    admin_commission: adminFee,
+                    seller_revenue: sellerRevenue, // Matches Price
+                    shipping_fee: shipFee,
+                    shipping_method: shipMethod,
+                    delivery_info: address,
+                    status: 'pending',
+                    payment_method: selectedPayment
+                }).select().single();
+
+                if (txErr) throw txErr;
+                createdTxIds.push(tx.id);
+
+                // B. INSERT PAYMENT
+                await _supabase.from('payments').insert({
+                    transaction_id: tx.id,
+                    user_id: session.user.id,
+                    method: selectedPayment,
+                    status: selectedPayment === 'cod' ? 'pending' : 'success',
+                    details: payDetails
+                });
+            }
+
+            const idsToDelete = checkoutItems.map(i => i.id);
+            await _supabase.from('cart').delete().in('id', idsToDelete);
+            sessionStorage.removeItem('checkoutItems');
+            window.location.href = `payment-success.html?tx=${createdTxIds.join(',')}`;
+
+        } catch (err) {
+            console.error(err);
+            alert("Error: " + err.message);
+            btn.disabled = false; btn.innerText = "Confirm & Pay";
+        }
+    });
+    // Theme Logic
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        document.getElementById('themeIcon').innerText = next === 'dark' ? '🌙' : '☀️';
+    }
+    const t = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    document.getElementById('themeIcon').innerText = t === 'dark' ? '🌙' : '☀️';
+    init();
+  </script>
+</body>
+</html>

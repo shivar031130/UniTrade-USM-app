@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Dashboard — UniTrade</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* === THEME VARIABLES === */
+    :root[data-theme="dark"]{
+      --bg:#0f172a; --card:#1e293b; --card-hover:#2d3b52; --muted:#94a3b8; 
+      --accent:#3b82f6; --text:#f1f5f9; --border:rgba(148, 163, 184, 0.15); 
+      --shadow:rgba(0,0,0,.3); --success:#10b981; --warning:#f59e0b; --danger:#ef4444;
+      --gradient: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    }
+    :root[data-theme="light"]{
+      --bg:#f8fafc; --card:#ffffff; --card-hover:#f1f5f9; --muted:#64748b; 
+      --accent:#3b82f6; --text:#0f172a; --border:rgba(15, 23, 42, 0.1); 
+      --shadow:rgba(0,0,0,.1); --success:#10b981; --warning:#f59e0b; --danger:#ef4444;
+      --gradient: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    }
+    
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter', -apple-system, sans-serif; background:var(--bg); color:var(--text); padding:0; display: flex; flex-direction: column; min-height: 100vh; }
+    
+    /* === HEADER === */
+    header {
+        display:flex; align-items:center; justify-content: space-between; padding:16px 40px; border-bottom:1px solid var(--border);
+        background: var(--card); position: sticky; top: 0; z-index: 100;
+    }
+    .brand { display:flex; align-items:center; gap:12px; font-weight: 800; font-size: 20px; color: var(--text); text-decoration: none; }
+    .logo {
+        width:40px; height:40px; border-radius:10px; background:var(--gradient);
+        display:flex; align-items:center; justify-content:center; color:white; font-size:18px;
+    }
+    
+    /* === CONTAINER === */
+    .container { max-width:1400px; margin:0 auto; padding: 40px; width: 100%; }
+    
+    /* === STATS GRID === */
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:20px; margin-bottom:40px; }
+    .stat-card { 
+        background:var(--card); padding:24px; border-radius:16px; border:1px solid var(--border); 
+        box-shadow:0 4px 16px var(--shadow); transition:0.2s; cursor:pointer; position: relative; overflow: hidden;
+    }
+    .stat-card:hover { transform:translateY(-4px); border-color:var(--accent); }
+    .stat-card .label { font-size:12px; color:var(--muted); text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
+    .stat-card .value { font-size:28px; font-weight:800; margin-top:8px; color:var(--text); }
+    
+    /* Color accents for stats */
+    .stat-card.revenue .value { color: #8b5cf6; } 
+    .stat-card.commission .value { color: #10b981; } 
+    .stat-card.users .value { color: var(--accent); } 
+    .stat-card.disputes .value { color: var(--danger); } 
+
+    /* === TABS === */
+    .tabs { display:flex; gap:10px; border-bottom:1px solid var(--border); margin-bottom:30px; overflow-x: auto; }
+    .tab { 
+        padding:12px 20px; background:transparent; border:none; color:var(--muted); cursor:pointer; 
+        font-weight:600; font-size:14px; border-bottom:3px solid transparent; transition:0.2s; white-space: nowrap;
+    }
+    .tab:hover { color:var(--text); background: rgba(255,255,255,0.05); }
+    .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab-content { display:none; animation:fadeIn 0.3s; }
+    .tab-content.active { display:block; }
+
+    /* === TABLES === */
+    .table-container { background:var(--card); border-radius:16px; border:1px solid var(--border); overflow:hidden; overflow-x: auto; }
+    table { width:100%; border-collapse:collapse; min-width:900px; }
+    th { background:rgba(0,0,0,0.2); padding:16px; text-align:left; font-weight:600; font-size:12px; text-transform:uppercase; color:var(--muted); }
+    td { padding:16px; border-bottom:1px solid var(--border); font-size:14px; vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:var(--card-hover); }
+
+    /* Standardized Table Image */
+    .table-img {
+        width: 40px; 
+        height: 40px; 
+        border-radius: 6px; 
+        object-fit: cover;
+        background-color: var(--border);
+    }
+    .table-avatar {
+        width: 40px; 
+        height: 40px; 
+        border-radius: 50%; 
+        object-fit: cover;
+        background-color: var(--border);
+    }
+
+    /* === BADGES === */
+    .badge { padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; text-transform:uppercase; display:inline-block; }
+    .badge.active, .badge.approved, .badge.resolved, .badge.completed, .badge.success { background:rgba(16, 185, 129, 0.15); color:var(--success); }
+    .badge.pending, .badge.ongoing { background:rgba(245, 158, 11, 0.15); color:var(--warning); }
+    .badge.rejected, .badge.cancelled, .badge.dismissed, .badge.failed { background:rgba(239, 68, 68, 0.15); color:var(--danger); }
+    .badge.admin { background:rgba(139, 92, 246, 0.15); color:#8b5cf6; }
+
+    /* === BUTTONS === */
+    .btn { background:var(--accent); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px; text-decoration:none; transition:0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { opacity:0.9; transform:translateY(-1px); }
+    .btn.danger { background:var(--danger); }
+    .btn.success { background:var(--success); }
+    .btn.ghost { background:transparent; border:1px solid var(--border); color:var(--text); }
+    .btn.small { padding: 4px 10px; font-size: 11px; }
+
+    /* === MODALS === */
+    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+    .modal.active { display:flex; animation:fadeIn 0.2s; }
+    .modal-content { background:var(--card); border-radius:16px; width:90%; max-width:800px; max-height:90vh; overflow-y:auto; padding:30px; border:1px solid var(--border); position:relative; }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+    .modal-close { background:transparent; border:none; color:var(--muted); font-size:24px; cursor:pointer; }
+    
+    /* DETAILS */
+    .detail-view { display: flex; flex-direction: column; gap: 20px; }
+    .detail-header { display: flex; align-items: center; gap: 20px; }
+    .detail-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; background: #000; border: 3px solid var(--border); }
+    .detail-img-large { width: 100%; height: 250px; object-fit: cover; border-radius: 12px; background: #000; border: 1px solid var(--border); }
+    
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
+    .info-item label { display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+    .info-item span { font-size: 15px; font-weight: 500; word-break: break-word; }
+    
+    /* FILTERS BAR */
+    .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; background: var(--bg); padding: 10px; border-radius: 10px; border: 1px solid var(--border); flex-wrap: wrap;}
+    .filter-bar select { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 13px; outline: none; }
+
+    /* Chart Container */
+    .chart-box { height:350px; width:100%; background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 30px; }
+
+    @keyframes fadeIn { from {opacity:0; transform:translateY(10px);} to {opacity:1; transform:translateY(0);} }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+        <div class="logo">UT</div>
+        <span>Admin Panel</span>
+    </a>
+    <div class="top-actions">
+        <button class="btn ghost" onclick="toggleTheme()" id="themeIcon">🌙</button>
+        <a href="index.html" class="btn ghost">Back to Market</a>
+        <button onclick="logout()" class="btn danger">Logout</button>
+    </div>
+  </header>
+
+  <div class="container">
+    
+    <div class="stats-grid">
+      <div class="stat-card revenue" onclick="openFinancialModal('gmv')">
+        <div class="label">Total System GMV</div>
+        <div class="value" id="gmvValue">RM 0.00</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:5px;">Click for breakdown</div>
+      </div>
+      <div class="stat-card commission" onclick="openFinancialModal('commission')">
+        <div class="label">Total Commission</div>
+        <div class="value" id="commissionValue">RM 0.00</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:5px;">Click for breakdown</div>
+      </div>
+      <div class="stat-card users" onclick="switchTab('users')">
+        <div class="label">Registered Users</div>
+        <div class="value" id="usersCount">0</div>
+      </div>
+      <div class="stat-card products" onclick="switchTab('products')">
+        <div class="label">Active Listings</div>
+        <div class="value" id="listingsCount">0</div>
+      </div>
+      <div class="stat-card disputes" onclick="switchTab('disputes')">
+        <div class="label">Open Disputes</div>
+        <div class="value" id="disputesCount">0</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('overview')">Overview</button>
+      <button class="tab" onclick="switchTab('users')">Users</button>
+      <button class="tab" onclick="switchTab('products')">Listings</button>
+      <button class="tab" onclick="switchTab('transactions')">Transactions</button>
+      <button class="tab" onclick="switchTab('disputes')">Disputes</button>
+    </div>
+
+    <div id="overview" class="tab-content active">
+      <div class="chart-box">
+        <canvas id="revenueChart"></canvas>
+      </div>
+      <h3>Recent Activity</h3>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Type</th><th>Description</th><th>Time</th></tr></thead>
+          <tbody id="recentActivity"><tr><td colspan="3">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="users" class="tab-content">
+      <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+        <h3>User Management</h3>
+        <button class="btn ghost small" onclick="loadUsers()">Refresh</button>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+          <tbody id="usersTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="products" class="tab-content">
+      <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+        <h3>Listings Management</h3>
+        <div>
+            <button class="btn ghost small" onclick="loadProducts(true)">Pending Only</button>
+            <button class="btn ghost small" onclick="loadProducts()">All</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Product</th><th>Price</th><th>Seller</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="productsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="transactions" class="tab-content">
+      <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+        <h3>All Transactions</h3>
+        <button class="btn ghost small" onclick="loadTransactions()">Refresh</button>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>ID</th><th>Item</th><th>Paid (GMV)</th><th>Revenue</th><th>Delivery</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="transactionsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="disputes" class="tab-content">
+      <h3>Dispute Cases</h3>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Tx ID</th><th>Reason</th><th>Filed By</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="disputesTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="detailModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">Details</h2>
+        <button class="modal-close" onclick="closeModal('detailModal')">×</button>
+      </div>
+      <div id="modalBody">Loading...</div>
+    </div>
+  </div>
+
+  <div id="financialModal" class="modal">
+    <div class="modal-content" style="max-width: 900px;">
+      <div class="modal-header">
+        <h2 id="finModalTitle">Financial Breakdown</h2>
+        <button class="modal-close" onclick="closeModal('financialModal')">×</button>
+      </div>
+      
+      <div class="filter-bar">
+        <select id="finMonth" onchange="filterFinancials()">
+            <option value="all">All Time</option>
+            <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+            <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+            <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+            <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+        </select>
+        <select id="finSort" onchange="filterFinancials()">
+            <option value="date_desc">Newest First</option>
+            <option value="date_asc">Oldest First</option>
+            <option value="amount_desc">Highest Amount</option>
+            <option value="amount_asc">Lowest Amount</option>
+        </select>
+        <select id="finCategory" onchange="filterFinancials()">
+            <option value="all">All Categories</option>
+            <option value="Textbooks">Textbooks</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Furniture">Furniture</option>
+            <option value="Clothing">Clothing</option>
+        </select>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:5px; font-weight:700;">
+            Total: <span id="finTotal" style="color:var(--success)">RM 0.00</span>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Date</th><th>Item</th><th>Category</th><th>Amount</th></tr></thead>
+          <tbody id="finTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://dkpnhswjjmjligemxoet.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrcG5oc3dqam1qbGlnZW14b2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTg4MjksImV4cCI6MjA4MTczNDgyOX0.aGk9fC0-u_ClnxfOVh_BH4_Xj-cF7i0_XVydYV_T-RM';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let chartInstance = null;
+    let allTransactionsCache = []; 
+    let currentFinMode = 'gmv'; 
+
+    async function init() {
+        const { data: { session } } = await _supabase.auth.getSession();
+        if(!session) return window.location.href = 'index.html';
+
+        const { data: profile } = await _supabase.from('profiles').select('role').eq('id', session.user.id).single();
+        if (!profile || profile.role !== 'admin') {
+            alert("Access Denied: Admins Only");
+            window.location.href = 'index.html';
+            return;
+        }
+
+        loadDashboardData();
+        loadUsers();
+        loadProducts();
+        loadTransactions();
+        loadDisputes();
+    }
+
+    async function loadDashboardData() {
+        const { data: txs } = await _supabase.from('transactions')
+            .select('amount_paid, admin_commission, created_at, listing_id, listings(title, category_id, categories(name))')
+            .order('created_at', { ascending: false });
+        
+        allTransactionsCache = txs || []; 
+
+        const totalGMV = allTransactionsCache.reduce((sum, t) => sum + (t.amount_paid || 0), 0);
+        const totalComm = allTransactionsCache.reduce((sum, t) => sum + (t.admin_commission || 0), 0);
+
+        document.getElementById('gmvValue').innerText = `RM ${totalGMV.toLocaleString('en-MY', {minimumFractionDigits: 2})}`;
+        document.getElementById('commissionValue').innerText = `RM ${totalComm.toLocaleString('en-MY', {minimumFractionDigits: 2})}`;
+
+        const { count: uCount } = await _supabase.from('profiles').select('*', { count: 'exact', head: true });
+        const { count: lCount } = await _supabase.from('listings').select('*', { count: 'exact', head: true }).eq('status', 'active');
+        const { count: dCount } = await _supabase.from('disputes').select('*', { count: 'exact', head: true }).eq('status', 'ongoing');
+
+        document.getElementById('usersCount').innerText = uCount;
+        document.getElementById('listingsCount').innerText = lCount;
+        document.getElementById('disputesCount').innerText = dCount;
+
+        const recent = allTransactionsCache.slice(0, 5).map(t => `<tr><td><span class="badge completed">Sale</span></td><td>Sold: ${t.listings?.title || 'Item'}</td><td>${new Date(t.created_at).toLocaleDateString()}</td></tr>`).join('');
+        document.getElementById('recentActivity').innerHTML = recent;
+
+        renderChart(allTransactionsCache);
+    }
+
+    function renderChart(transactions) {
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+        const grouped = {};
+        transactions.forEach(t => {
+            const date = new Date(t.created_at).toLocaleDateString();
+            grouped[date] = (grouped[date] || 0) + t.amount_paid;
+        });
+
+        if(chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Object.keys(grouped).reverse(),
+                datasets: [{ label: 'Daily Volume (RM)', data: Object.values(grouped).reverse(), borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', fill: true, tension: 0.4 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
+        });
+    }
+
+    // --- USERS ---
+    async function loadUsers() {
+        const { data: users, error } = await _supabase.from('profiles').select('*').order('created_at', { ascending: false });
+        if(error) {
+            console.error("Error loading users:", error);
+            return;
+        }
+        
+        document.getElementById('usersTableBody').innerHTML = users.map(u => {
+            // Strictly check for boolean true
+            const isApproved = u.is_approved === true; 
+            
+            return `
+            <tr>
+                <td><div style="display:flex; align-items:center; gap:10px;"><img src="${u.avatar_url || 'https://via.placeholder.com/40'}" class="table-avatar">${u.full_name}</div></td>
+                <td>${u.email}</td>
+                <td><span class="badge ${u.role}">${u.role}</span></td>
+                <td><span class="badge ${isApproved ? 'active' : 'pending'}">${isApproved ? 'Approved' : 'Pending'}</span></td>
+                <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                <td>
+                    <button class="btn small ghost" onclick='viewDetails(${JSON.stringify(u).replace(/'/g, "&apos;")}, "User")'>View</button>
+                    ${u.role !== 'admin' ? 
+                        `<button class="btn small ${isApproved ? 'danger' : 'success'}" onclick="toggleUser('${u.id}', ${!isApproved})">
+                            ${isApproved ? 'Revoke' : 'Approve'}
+                        </button>` 
+                        : ''}
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    async function toggleUser(id, targetStatus) {
+        // Enforce Boolean Type
+        const statusBool = targetStatus === true; // This forces it to be strictly true or false
+        
+        const actionName = statusBool ? 'APPROVE' : 'REVOKE';
+        
+        if(!confirm(`Are you sure you want to ${actionName} access for this user?`)) return;
+
+        console.log(`Updating User ${id} to is_approved: ${statusBool}`);
+
+        const { error } = await _supabase
+            .from('profiles')
+            .update({ is_approved: statusBool })
+            .eq('id', id);
+        
+        if(error) {
+            alert("Database Error: " + error.message);
+            console.error(error);
+        } else {
+            // Success - reload table
+            loadUsers();
+        }
+    }
+
+    async function loadProducts(pending=false) {
+        let q = _supabase.from('listings').select('*, seller:seller_id(full_name)').order('created_at', { ascending: false });
+        if(pending) q = q.eq('status', 'pending');
+        const { data } = await q;
+        document.getElementById('productsTableBody').innerHTML = data.map(i => `
+            <tr>
+                <td><div style="display:flex; align-items:center; gap:10px;"><img src="${i.image_url || 'https://via.placeholder.com/40'}" class="table-img">${i.title}</div></td>
+                <td>RM ${i.price}</td>
+                <td>${i.seller?.full_name}</td>
+                <td><span class="badge ${i.status}">${i.status}</span></td>
+                <td>
+                    <button class="btn small ghost" onclick='viewDetails(${JSON.stringify(i).replace(/'/g, "&apos;")}, "Listing")'>View</button>
+                    ${i.status === 'pending' ? `<button class="btn small success" onclick="setListing('${i.id}', 'active')">✓</button><button class="btn small danger" onclick="setListing('${i.id}', 'rejected')">✕</button>` : ''}
+                </td>
+            </tr>`).join('');
+    }
+    async function setListing(id, status) { await _supabase.from('listings').update({ status }).eq('id', id); loadProducts(); }
+
+    async function loadTransactions() {
+        const { data: txs } = await _supabase.from('transactions')
+            .select('*, listings(title, image_url), buyer:buyer_id(full_name), seller:seller_id(full_name)')
+            .order('created_at', { ascending: false });
+
+        document.getElementById('transactionsTableBody').innerHTML = txs.map(t => `
+            <tr>
+                <td style="font-family:monospace">${t.id.slice(0,8)}</td>
+                <td>${t.listings?.title}</td>
+                <td>RM ${t.amount_paid}</td>
+                <td style="color:#10b981">RM ${t.seller_revenue}</td>
+                <td>${t.shipping_method || '-'}</td>
+                <td><span class="badge ${t.status}">${t.status}</span></td>
+                <td><button class="btn small ghost" onclick='viewDetails(${JSON.stringify(t).replace(/'/g, "&apos;")}, "Transaction")'>Details</button></td>
+            </tr>`).join('');
+    }
+
+    async function loadDisputes() {
+        const { data: disputes } = await _supabase.from('disputes').select('*, buyer:buyer_id(full_name)').order('created_at', { ascending: false });
+        document.getElementById('disputesTableBody').innerHTML = disputes.map(d => `
+            <tr>
+                <td style="font-family:monospace">${d.transaction_id?.slice(0,8) || 'N/A'}</td>
+                <td>${d.reason}</td>
+                <td>${d.buyer?.full_name}</td>
+                <td><span class="badge ${d.status}">${d.status}</span></td>
+                <td>
+                    <button class="btn small ghost" onclick='viewDetails(${JSON.stringify(d).replace(/'/g, "&apos;")}, "Dispute")'>View</button>
+                    ${d.status === 'ongoing' ? `<button class="btn small success" onclick="resolveDispute('${d.id}', 'resolved')">Resolve</button><button class="btn small danger" onclick="resolveDispute('${d.id}', 'dismissed')">Dismiss</button>` : ''}
+                </td>
+            </tr>`).join('');
+    }
+    async function resolveDispute(id, status) { if(confirm(`Mark as ${status}?`)) { await _supabase.from('disputes').update({ status }).eq('id', id); loadDisputes(); } }
+
+    // --- FINANCIAL BREAKDOWN ---
+    window.openFinancialModal = (mode) => {
+        currentFinMode = mode;
+        document.getElementById('finModalTitle').innerText = mode === 'gmv' ? 'GMV Breakdown' : 'Commission Breakdown';
+        document.getElementById('financialModal').classList.add('active');
+        filterFinancials();
+    };
+
+    window.filterFinancials = () => {
+        const month = document.getElementById('finMonth').value;
+        const sort = document.getElementById('finSort').value;
+        const cat = document.getElementById('finCategory').value;
+
+        let filtered = [...allTransactionsCache];
+
+        if (month !== 'all') filtered = filtered.filter(t => new Date(t.created_at).getMonth() == month);
+        if (cat !== 'all') filtered = filtered.filter(t => (t.listings?.categories?.name || t.listings?.category_id || '') == cat);
+
+        filtered.sort((a, b) => {
+            const valA = currentFinMode === 'gmv' ? a.amount_paid : a.admin_commission;
+            const valB = currentFinMode === 'gmv' ? b.amount_paid : b.admin_commission;
+            const dateA = new Date(a.created_at);
+            const dateB = new Date(b.created_at);
+
+            if (sort === 'amount_desc') return valB - valA;
+            if (sort === 'amount_asc') return valA - valB;
+            if (sort === 'date_desc') return dateB - dateA;
+            if (sort === 'date_asc') return dateA - dateB;
+            return 0;
+        });
+
+        const total = filtered.reduce((sum, t) => sum + (currentFinMode === 'gmv' ? t.amount_paid : t.admin_commission), 0);
+        document.getElementById('finTotal').innerText = `RM ${total.toLocaleString('en-MY', {minimumFractionDigits: 2})}`;
+
+        document.getElementById('finTableBody').innerHTML = filtered.map(t => `
+            <tr>
+                <td>${new Date(t.created_at).toLocaleDateString()}</td>
+                <td>${t.listings?.title || 'Unknown'}</td>
+                <td>${t.listings?.categories?.name || 'Item'}</td>
+                <td style="font-weight:700">RM ${(currentFinMode === 'gmv' ? t.amount_paid : t.admin_commission).toFixed(2)}</td>
+            </tr>
+        `).join('');
+    };
+
+    // --- GENERIC DETAILS MODAL ---
+    window.viewDetails = async (data, type) => {
+        const modalBody = document.getElementById('modalBody');
+        document.getElementById('modalTitle').innerText = `${type} Details`;
+        
+        let content = '';
+
+        if (type === 'Transaction') {
+            const { data: pay } = await _supabase.from('payments').select('*').eq('transaction_id', data.id).single();
+            const { data: rev } = await _supabase.from('reviews').select('*').eq('transaction_id', data.id).single();
+
+            content = `
+                <div class="detail-view">
+                    <div class="detail-header">
+                        <img style="width:60px; height:60px; border-radius:8px; object-fit:cover;" src="${data.listings?.image_url || ''}" />
+                        <div class="detail-info"><h3>${data.listings?.title}</h3><p>Tx ID: ${data.id}</p></div>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item"><label>Buyer</label><span>${data.buyer?.full_name}</span></div>
+                        <div class="info-item"><label>Seller</label><span>${data.seller?.full_name}</span></div>
+                        <div class="info-item"><label>Total Paid</label><span>RM ${data.amount_paid}</span></div>
+                        <div class="info-item"><label>Seller Revenue</label><span>RM ${data.seller_revenue}</span></div>
+                        <div class="info-item"><label>Delivery</label><span>${data.shipping_method}</span></div>
+                        <div class="info-item"><label>Status</label><span class="badge ${data.status}">${data.status}</span></div>
+                    </div>
+                    
+                    <h4 style="margin:0; border-bottom:1px solid var(--border); padding-bottom:5px;">Payment Info</h4>
+                    <div class="info-grid">
+                        <div class="info-item"><label>Method</label><span>${pay?.method || 'N/A'}</span></div>
+                        <div class="info-item"><label>Status</label><span class="badge ${pay?.status || 'pending'}">${pay?.status || 'N/A'}</span></div>
+                    </div>
+
+                    <h4 style="margin:0; border-bottom:1px solid var(--border); padding-bottom:5px;">Review</h4>
+                    ${rev ? `
+                        <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:8px;">
+                            <div style="color:#f59e0b; font-size:18px;">${'★'.repeat(rev.rating)}</div>
+                            <p style="margin:5px 0;">"${rev.content}"</p>
+                        </div>
+                    ` : '<p style="color:var(--muted)">No review submitted.</p>'}
+                </div>
+            `;
+        } 
+        else if (type === 'User') {
+            content = `
+                <div class="detail-view">
+                    <div class="detail-header">
+                        <img class="detail-avatar" src="${data.avatar_url || 'https://via.placeholder.com/80'}" />
+                        <div class="detail-info"><h3>${data.full_name}</h3><p>${data.email}</p><span class="badge ${data.role}">${data.role}</span></div>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item"><label>Phone</label><span>${data.phone_number || '-'}</span></div>
+                        <div class="info-item"><label>Campus</label><span>${data.campus_location || '-'}</span></div>
+                        <div class="info-item"><label>Joined</label><span>${new Date(data.created_at).toLocaleString()}</span></div>
+                        <div class="info-item"><label>Approved</label><span>${data.is_approved ? 'Yes' : 'No'}</span></div>
+                    </div>
+                </div>`;
+        } 
+        else if (type === 'Listing') {
+            content = `
+                <div class="detail-view">
+                    <img class="detail-img-large" src="${data.image_url || 'https://via.placeholder.com/300'}" />
+                    <div class="info-grid">
+                        <div class="info-item"><label>Title</label><span>${data.title}</span></div>
+                        <div class="info-item"><label>Price</label><span>RM ${data.price}</span></div>
+                        <div class="info-item"><label>Seller</label><span>${data.seller?.full_name}</span></div>
+                        <div class="info-item"><label>Stock</label><span>${data.stock_quantity}</span></div>
+                        <div class="info-item"><label>Status</label><span class="badge ${data.status}">${data.status}</span></div>
+                        <div class="info-item" style="grid-column:span 2"><label>Description</label><span>${data.description}</span></div>
+                    </div>
+                </div>`;
+        } 
+        else if (type === 'Dispute') {
+            content = `
+                <div class="detail-view">
+                    <div class="info-grid">
+                        <div class="info-item"><label>Reason</label><span>${data.reason}</span></div>
+                        <div class="info-item"><label>Status</label><span class="badge ${data.status}">${data.status}</span></div>
+                        <div class="info-item"><label>Filed By</label><span>${data.buyer?.full_name}</span></div>
+                        <div class="info-item"><label>Against</label><span>${data.seller?.full_name}</span></div>
+                        <div class="info-item" style="grid-column:span 2"><label>Description</label><p style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px;">${data.description}</p></div>
+                    </div>
+                </div>`;
+        }
+
+        modalBody.innerHTML = content;
+        document.getElementById('detailModal').classList.add('active');
+    };
+
+    window.closeModal = (id) => document.getElementById(id).classList.remove('active');
+    window.switchTab = (t) => { document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active')); document.querySelector(`button[onclick*='${t}']`).classList.add('active'); document.getElementById(t).classList.add('active'); };
+    function toggleTheme() { const n = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme', n); document.getElementById('themeIcon').innerText=n==='dark'?'🌙':'☀️'; }
+    async function logout() { await _supabase.auth.signOut(); window.location.href='index.html'; }
+
+    init();
+  </script>
+</body>
+</html>

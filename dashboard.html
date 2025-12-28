@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard — UniTrade</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+  <style>
+    /* === THEME VARIABLES === */
+    :root[data-theme="dark"]{
+      --bg:#0f172a; --card:#1e293b; --card-hover:#2d3b52; --muted:#94a3b8; 
+      --accent:#3b82f6; --success:#10b981; --warning:#f59e0b; --danger:#ef4444;
+      --text:#f1f5f9; --border:rgba(148, 163, 184, 0.15); --input-bg:#0f172a;
+      --gradient-1:#6366f1; --gradient-2:#8b5cf6;
+    }
+    :root[data-theme="light"]{
+      --bg:#f8fafc; --card:#ffffff; --card-hover:#f1f5f9; --muted:#64748b; 
+      --accent:#3b82f6; --success:#10b981; --warning:#f59e0b; --danger:#ef4444;
+      --text:#0f172a; --border:rgba(15, 23, 42, 0.1); --input-bg:#f8fafc;
+      --gradient-1:#6366f1; --gradient-2:#8b5cf6;
+    }
+    
+    * { box-sizing: border-box; }
+    body{ margin:0; font-family:'Inter', -apple-system, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+    
+    /* === HEADER === */
+    header{
+        display:flex; align-items:center; gap:24px; padding:16px 32px; border-bottom:1px solid var(--border);
+        background: var(--card); position: sticky; top: 0; z-index: 100;
+    }
+    .brand{display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit;}
+    .logo{
+        width:40px; height:40px; border-radius:10px; 
+        background:linear-gradient(135deg,var(--gradient-1),var(--gradient-2)); 
+        display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:18px;
+    }
+    .brand h1{font-size:20px; margin:0; font-weight:700;}
+    .top-actions{margin-left:auto; display:flex; gap:12px; align-items:center;}
+
+    /* === LAYOUT === */
+    .layout { display: flex; flex: 1; height: calc(100vh - 73px); overflow: hidden; }
+    
+    /* SIDEBAR */
+    .sidebar { 
+        width: 260px; background: var(--card); border-right: 1px solid var(--border); 
+        padding: 24px; display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;
+    }
+    .nav-group { margin-bottom: 24px; }
+    .nav-label { font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 8px; letter-spacing: 0.5px; }
+    
+    .nav-btn {
+        width: 100%; text-align: left; padding: 12px; border-radius: 8px; border: none;
+        background: transparent; color: var(--text); cursor: pointer; font-weight: 500; font-size: 14px;
+        display: flex; align-items: center; gap: 12px; transition: 0.2s; margin-bottom: 4px;
+    }
+    .nav-btn:hover { background: var(--card-hover); }
+    .nav-btn.active { background: rgba(59, 130, 246, 0.1); color: var(--accent); font-weight: 600; }
+    
+    .sidebar-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+    .user-avatar-small { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--card-hover); border: 1px solid var(--border); }
+
+    /* MAIN CONTENT */
+    .main { flex: 1; padding: 40px; overflow-y: auto; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    h1 { font-size: 26px; margin: 0; font-weight: 700; }
+
+    /* FILTERS BAR */
+    .filter-bar {
+        display: flex; gap: 10px; margin-bottom: 24px; background: var(--card); padding: 16px; 
+        border-radius: 12px; border: 1px solid var(--border); flex-wrap: wrap; align-items: center;
+    }
+    .filter-group { display: flex; align-items: center; gap: 8px; }
+    select { 
+        padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); 
+        background: var(--bg); color: var(--text); font-size: 13px; outline: none; cursor: pointer;
+    }
+    .summary-text { 
+        margin-left: auto; font-size: 14px; font-weight: 600; color: var(--muted); 
+        display: flex; gap: 15px; align-items: center; 
+    }
+    .summary-val { color: var(--success); font-weight: 700; font-size: 16px; }
+
+    /* OVERVIEW DASHBOARD */
+    .overview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
+    .kpi-card { background: var(--card); padding: 24px; border-radius: 16px; border: 1px solid var(--border); display:flex; flex-direction:column; }
+    .kpi-label { color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 5px; text-transform:uppercase; }
+    .kpi-value { font-size: 28px; font-weight: 700; color: var(--text); }
+    
+    .chart-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+    .chart-card { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border); min-height: 350px; }
+    .chart-title { font-weight: 700; margin-bottom: 15px; font-size: 16px; }
+
+    /* TABLES */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+    .data-table th { text-align: left; padding: 12px; font-size: 12px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .data-table td { padding: 16px 12px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+    .data-table tr:hover { background: var(--card-hover); cursor: pointer; }
+    
+    /* STATUS BADGES */
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; }
+    .badge.pending { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+    .badge.confirmed { background: rgba(59, 130, 246, 0.15); color: var(--accent); }
+    .badge.shipped { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+    .badge.delivered, .badge.completed { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+    .badge.cancelled { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+
+    /* LISTINGS GRID */
+    .grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+    .listing-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: 0.2s; display: flex; flex-direction: column; }
+    .listing-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+    .listing-img { width: 100%; height: 160px; object-fit: cover; background: #000; }
+    .listing-body { padding: 16px; flex: 1; display: flex; flex-direction: column; }
+    .listing-title { font-weight: 700; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    
+    /* REVIEWS */
+    .review-card-detailed { display: grid; grid-template-columns: 60px 1fr; gap: 20px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 15px; }
+    .review-img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: #000; border: 1px solid var(--border); }
+    .review-main { display: flex; flex-direction: column; gap: 8px; }
+    .review-content-box { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; margin-top: 5px; font-size: 14px; }
+
+    /* FORMS & MODALS */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 200; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--card); width: 100%; max-width: 600px; padding: 30px; border-radius: 16px; border: 1px solid var(--border); max-height: 90vh; overflow-y: auto; }
+    
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--text); }
+    input, select, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); outline: none; font-size: 14px; }
+    input:focus, textarea:focus { border-color: var(--accent); }
+
+    /* IMAGE PREVIEW */
+    .image-preview-box { width: 100%; height: 150px; border: 2px dashed var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background-size: cover; background-position: center; position: relative; margin-bottom: 10px; transition: 0.2s; }
+    .image-preview-box:hover { border-color: var(--accent); background-color: var(--card-hover); }
+    .image-preview-box span { font-size: 13px; color: var(--muted); pointer-events: none; }
+
+    /* PROFILE AVATAR */
+    .profile-avatar-section { display: flex; flex-direction: column; align-items: center; margin-bottom: 24px; }
+    .profile-avatar { width: 120px; height: 120px; border-radius: 50%; background-color: var(--card-hover); background-size: cover; background-position: center; border: 3px solid var(--border); cursor: pointer; position: relative; overflow: hidden; }
+    .profile-avatar:hover::after { content: 'Change'; position: absolute; inset: 0; background: rgba(0,0,0,0.5); color: white; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+
+    /* BUTTONS */
+    .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+    .btn.primary { background: var(--accent); color: white; }
+    .btn.outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn.danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+    .btn.success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .hidden { display: none !important; }
+
+    /* SLIDE OVER DETAILS */
+    .details-panel { position: fixed; top: 0; right: -500px; width: 450px; height: 100vh; background: var(--card); border-left: 1px solid var(--border); padding: 30px; transition: 0.3s ease; z-index: 200; overflow-y: auto; box-shadow: -5px 0 30px rgba(0,0,0,0.3); }
+    .details-panel.open { right: 0; }
+    .details-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+
+    @media(max-width: 900px) { 
+        .layout { flex-direction: column; height: auto; } 
+        .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); } 
+        .overview-grid, .chart-grid { grid-template-columns: 1fr; }
+        .review-card-detailed { grid-template-columns: 1fr; }
+        .filter-bar { flex-direction: column; align-items: flex-start; }
+        .summary-text { margin-left: 0; margin-top: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+        <div class="logo">UT</div>
+        <span>UniTrade Dashboard</span>
+    </a>
+    <div class="top-actions">
+        <button class="btn outline" onclick="toggleTheme()" id="themeIcon">🌙</button>
+        <a href="index.html" class="btn outline">Go Home</a>
+        <button class="btn danger" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+        <div class="nav-group">
+            <button class="nav-btn active" onclick="showTab('overview')">📊 Overview</button>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-label">Buyer</div>
+            <button class="nav-btn" onclick="showTab('purchases')">📦 My Purchases</button>
+            <button class="nav-btn" onclick="showTab('reviews-given')">⭐ My Reviews</button>
+            <button class="nav-btn" onclick="showTab('disputes-buyer')">⚖️ My Disputes</button>
+        </div>
+        
+        <div class="nav-group">
+            <div class="nav-label">Seller</div>
+            <button class="nav-btn" onclick="showTab('listings')">📋 My Listings</button>
+            <button class="nav-btn" onclick="showTab('sales')">💰 Incoming Orders</button>
+            <button class="nav-btn" onclick="showTab('reviews-received')">💬 Reviews Received</button>
+            <button class="nav-btn" onclick="showTab('disputes-seller')">🛡️ Seller Disputes</button>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-label">Account</div>
+            <button class="nav-btn" onclick="showTab('profile')">👤 Profile Settings</button>
+        </div>
+
+        <div class="sidebar-footer">
+            <img id="sidebarAvatar" class="user-avatar-small" src="https://via.placeholder.com/40">
+            <div style="font-size:14px; font-weight:600;" id="sidebarName">User</div>
+        </div>
+    </aside>
+
+    <main class="main">
+        
+        <div id="tab-overview" class="tab-content">
+            <div class="section-header"><h1>Dashboard Overview</h1></div>
+            
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Month:</label>
+                    <select id="filterMonth" onchange="applyFilters()">
+                        <option value="all">All Time</option>
+                        <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+                        <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+                        <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+                        <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Category:</label>
+                    <select id="filterCategory" onchange="applyFilters()">
+                        <option value="all">All Categories</option>
+                        </select>
+                </div>
+                <div class="filter-group">
+                    <label>Sort By:</label>
+                    <select id="filterSort" onchange="applyFilters()">
+                        <option value="date_desc">Newest First</option>
+                        <option value="date_asc">Oldest First</option>
+                        <option value="amount_desc">Highest Sales</option>
+                        <option value="amount_asc">Lowest Sales</option>
+                    </select>
+                </div>
+                <div class="summary-text">
+                    Transactions: <span class="summary-val" id="summaryCount">0</span>
+                    Total Sales: <span class="summary-val" id="summaryTotal">RM 0.00</span>
+                </div>
+            </div>
+
+            <div class="overview-grid">
+                <div class="kpi-card"><div class="kpi-label">Active Listings</div><div class="kpi-value" id="kpiListings">0</div></div>
+                <div class="kpi-card"><div class="kpi-label">Total Sales (All Time)</div><div class="kpi-value" id="kpiSales">RM 0.00</div></div>
+                <div class="kpi-card"><div class="kpi-label">Seller Rating</div><div class="kpi-value" id="kpiRating">0.0</div></div>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <div class="chart-title">Sales Trends</div>
+                    <div id="salesChart">Loading charts...</div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">Sales by Category</div>
+                    <div id="categoryChart">Loading charts...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-purchases" class="tab-content hidden">
+            <div class="section-header"><h1>My Purchases</h1></div>
+            <div class="card">
+                <table class="data-table">
+                    <thead><tr><th>Item</th><th>Date</th><th>Seller</th><th>Status</th><th>Total</th><th>Action</th></tr></thead>
+                    <tbody id="purchasesList"><tr><td colspan="6">Loading...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-listings" class="tab-content hidden">
+            <div class="section-header">
+                <h1>My Listings</h1>
+                <button class="btn primary" onclick="openModal('listingModal')">+ Create Listing</button>
+            </div>
+            <div id="listingsGrid" class="grid-view">Loading...</div>
+        </div>
+
+        <div id="tab-sales" class="tab-content hidden">
+            <div class="section-header"><h1>Incoming Orders</h1></div>
+            <div class="card">
+                <table class="data-table">
+                    <thead><tr><th>Item</th><th>Buyer</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody id="salesList"><tr><td colspan="5">Loading...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-reviews-received" class="tab-content hidden"><div class="section-header"><h1>Reviews Received</h1></div><div id="reviewsList"></div></div>
+        <div id="tab-reviews-given" class="tab-content hidden"><div class="section-header"><h1>My Reviews Given</h1></div><div id="reviewsGivenList"></div></div>
+        <div id="tab-disputes-buyer" class="tab-content hidden"><div class="section-header"><h1>My Disputes</h1></div><div id="buyerDisputes"></div></div>
+        <div id="tab-disputes-seller" class="tab-content hidden"><div class="section-header"><h1>Disputes Against Me</h1></div><div id="sellerDisputes"></div></div>
+
+        <div id="tab-profile" class="tab-content hidden">
+            <div class="section-header"><h1>Profile Settings</h1></div>
+            <div class="card" style="max-width:600px">
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar" id="profAvatarPreview"></div>
+                    <input type="file" id="avatarInput" accept="image/*" style="display:none">
+                    <p style="font-size:12px; color:var(--muted); margin-top:10px;">Click avatar to change</p>
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group"><label>Full Name</label><input id="profName"></div>
+                    <div class="form-group"><label>Phone Number</label><input id="profPhone"></div>
+                </div>
+                <div class="form-group"><label>Campus Location</label><input id="profCampus" placeholder="e.g. Main Campus"></div>
+                <div class="form-group"><label>Bio</label><textarea id="profBio" rows="3"></textarea></div>
+                <button class="btn primary" onclick="saveProfile()">Save Changes</button>
+            </div>
+        </div>
+
+    </main>
+  </div>
+
+  <div id="detailsPanel" class="details-panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 style="margin:0;">Details</h2>
+        <button onclick="closeDetails()" class="btn outline" style="padding:5px 10px;">✕</button>
+    </div>
+    <div id="detailsContent">Loading...</div>
+  </div>
+
+  <div id="listingModal" class="modal-overlay">
+    <div class="modal">
+        <h2 id="modalTitle" style="margin-top:0">Create Listing</h2>
+        <input type="hidden" id="editId">
+        
+        <div class="form-group"><label>Title</label><input id="inpTitle"></div>
+        <div class="form-grid">
+            <div class="form-group"><label>Price (RM)</label><input type="number" id="inpPrice" step="0.01"></div>
+            <div class="form-group"><label>Stock Quantity</label><input type="number" id="inpStock" value="1"></div>
+        </div>
+        
+        <div class="form-grid">
+            <div class="form-group"><label>Category</label><select id="inpCategory"></select></div>
+            <div class="form-group"><label>Condition</label>
+                <select id="inpCondition">
+                    <option value="New">New</option>
+                    <option value="Like New">Like New</option>
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Poor">Poor</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-group"><label>Pickup Location</label><input id="inpLocation"></div>
+        
+        <div class="form-group">
+            <label>Product Image</label>
+            <div class="image-preview-box" id="listingImagePreview"><span>Click to upload image</span></div>
+            <input type="file" id="listingImageInput" accept="image/*" style="display:none">
+            <input type="hidden" id="listingImageBase64">
+        </div>
+
+        <div class="form-group"><label>Description</label><textarea id="inpDesc" rows="4"></textarea></div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <button class="btn outline" onclick="closeModal('listingModal')">Cancel</button>
+            <button class="btn primary" onclick="saveListing()">Save Listing</button>
+        </div>
+    </div>
+  </div>
+
+  <div id="editReviewModal" class="modal-overlay">
+    <div class="modal" style="max-width:400px">
+        <h2 style="margin-top:0">Edit Review</h2>
+        <input type="hidden" id="editReviewId">
+        <div class="form-group"><label>Rating (1-5)</label><input type="number" id="editReviewRating" min="1" max="5"></div>
+        <div class="form-group"><label>Review</label><textarea id="editReviewText" rows="4"></textarea></div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+            <button class="btn outline" onclick="closeModal('editReviewModal')">Cancel</button>
+            <button class="btn primary" onclick="submitEditReview()">Update Review</button>
+        </div>
+    </div>
+  </div>
+
+  <div id="replyModal" class="modal-overlay">
+    <div class="modal" style="max-width:400px">
+        <h2 style="margin-top:0">Reply to Review</h2>
+        <input type="hidden" id="replyReviewId">
+        <textarea id="replyText" rows="4" placeholder="Write your reply..."></textarea>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+            <button class="btn outline" onclick="closeModal('replyModal')">Cancel</button>
+            <button class="btn primary" onclick="submitReply()">Post Reply</button>
+        </div>
+    </div>
+  </div>
+
+  <div id="disputeModal" class="modal-overlay">
+    <div class="modal">
+        <h2>Raise Dispute</h2>
+        <input type="hidden" id="disputeTxId">
+        <input type="hidden" id="disputeSellerId">
+        <div class="form-group"><label>Reason</label>
+            <select id="disputeReason">
+                <option>Item not received</option>
+                <option>Item damaged</option>
+                <option>Wrong item sent</option>
+                <option>Other</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Description</label><textarea id="disputeDesc" rows="4"></textarea></div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn outline" onclick="closeModal('disputeModal')">Cancel</button>
+            <button class="btn danger" onclick="submitDispute()">Submit</button>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://dkpnhswjjmjligemxoet.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRrcG5oc3dqam1qbGlnZW14b2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTg4MjksImV4cCI6MjA4MTczNDgyOX0.aGk9fC0-u_ClnxfOVh_BH4_Xj-cF7i0_XVydYV_T-RM';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentUser = null;
+    let categoriesList = [];
+    let salesCache = [];
+    let chartInstanceSales = null;
+    let chartInstanceCategory = null;
+
+    // --- INITIALIZATION ---
+    async function init() {
+        const { data: { session } } = await _supabase.auth.getSession();
+        if(!session) return window.location.href = 'index.html';
+        currentUser = session.user;
+
+        const { data: cats } = await _supabase.from('categories').select('*');
+        categoriesList = cats || [];
+        populateCategoryDropdown();
+
+        loadProfileData();
+        loadOverview(); 
+    }
+
+    window.showTab = (tab) => {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.getElementById(`tab-${tab}`)?.classList.remove('hidden');
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+
+        if(tab === 'overview') loadOverview();
+        if(tab === 'listings') loadListings();
+        if(tab === 'sales') loadSales();
+        if(tab === 'purchases') loadPurchases();
+        if(tab === 'reviews-received') loadReviewsReceived();
+        if(tab === 'reviews-given') loadReviewsGiven();
+        if(tab === 'disputes-buyer') loadDisputes('buyer');
+        if(tab === 'disputes-seller') loadDisputes('seller');
+    };
+
+    function populateCategoryDropdown() {
+        const sel = document.getElementById('inpCategory');
+        sel.innerHTML = categoriesList.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        
+        // Also populate Filter Dropdown
+        const filterSel = document.getElementById('filterCategory');
+        filterSel.innerHTML = '<option value="all">All Categories</option>' + categoriesList.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    }
+
+    // --- OVERVIEW & FILTERING ---
+    async function loadOverview() {
+        // Fetch Key Metrics
+        const { count } = await _supabase.from('listings').select('*', { count: 'exact', head: true }).eq('seller_id', currentUser.id).eq('status', 'active');
+        document.getElementById('kpiListings').innerText = count || 0;
+
+        // Fetch Sales Data for Filtering
+        const { data: sales } = await _supabase.from('transactions')
+            .select('amount_paid, seller_revenue, created_at, listings(title, categories(name))')
+            .eq('seller_id', currentUser.id)
+            .neq('status', 'cancelled');
+        
+        salesCache = sales || [];
+        
+        const total = salesCache.reduce((sum, tx) => sum + (tx.seller_revenue || 0), 0);
+        document.getElementById('kpiSales').innerText = `RM ${total.toFixed(2)}`;
+
+        const { data: reviews } = await _supabase.from('reviews').select('rating').eq('seller_id', currentUser.id);
+        const avg = reviews?.length ? (reviews.reduce((a,b)=>a+b.rating,0)/reviews.length).toFixed(1) : '0.0';
+        document.getElementById('kpiRating').innerText = avg;
+
+        applyFilters(); // Initial render with defaults
+    }
+
+    function applyFilters() {
+        const month = document.getElementById('filterMonth').value;
+        const category = document.getElementById('filterCategory').value;
+        const sort = document.getElementById('filterSort').value;
+
+        let filtered = [...salesCache];
+
+        // 1. Month Filter
+        if (month !== 'all') {
+            filtered = filtered.filter(tx => new Date(tx.created_at).getMonth() == month);
+        }
+
+        // 2. Category Filter
+        if (category !== 'all') {
+            filtered = filtered.filter(tx => tx.listings?.categories?.name === category);
+        }
+
+        // 3. Sorting
+        filtered.sort((a, b) => {
+            if (sort === 'date_desc') return new Date(b.created_at) - new Date(a.created_at);
+            if (sort === 'date_asc') return new Date(a.created_at) - new Date(b.created_at);
+            if (sort === 'amount_desc') return (b.seller_revenue || 0) - (a.seller_revenue || 0);
+            if (sort === 'amount_asc') return (a.seller_revenue || 0) - (b.seller_revenue || 0);
+            return 0;
+        });
+
+        // 4. Update Summary
+        const sumTotal = filtered.reduce((s, t) => s + (t.seller_revenue || 0), 0);
+        document.getElementById('summaryCount').innerText = filtered.length;
+        document.getElementById('summaryTotal').innerText = `RM ${sumTotal.toFixed(2)}`;
+
+        // 5. Update Charts
+        renderCharts(filtered);
+    }
+
+    function renderCharts(data) {
+        // Sales Chart Data
+        const salesByDate = {};
+        data.forEach(tx => {
+            const date = new Date(tx.created_at).toLocaleDateString();
+            salesByDate[date] = (salesByDate[date] || 0) + (tx.seller_revenue || 0);
+        });
+
+        // Category Chart Data
+        const catCounts = {};
+        data.forEach(tx => {
+            const catName = tx.listings?.categories?.name || 'Other';
+            catCounts[catName] = (catCounts[catName] || 0) + 1;
+        });
+
+        // Render Sales Chart
+        document.getElementById('salesChart').innerHTML = '';
+        if(chartInstanceSales) chartInstanceSales.destroy();
+        chartInstanceSales = new ApexCharts(document.querySelector("#salesChart"), {
+            series: [{ name: 'Revenue', data: Object.values(salesByDate) }],
+            chart: { type: 'area', height: 300, background: 'transparent', toolbar:{show:false} },
+            theme: { mode: 'dark' }, stroke: { curve: 'smooth' },
+            xaxis: { categories: Object.keys(salesByDate) }, colors: ['#3b82f6']
+        });
+        chartInstanceSales.render();
+
+        // Render Category Chart
+        document.getElementById('categoryChart').innerHTML = '';
+        if(chartInstanceCategory) chartInstanceCategory.destroy();
+        chartInstanceCategory = new ApexCharts(document.querySelector("#categoryChart"), {
+            series: Object.values(catCounts).length ? Object.values(catCounts) : [1],
+            labels: Object.keys(catCounts).length ? Object.keys(catCounts) : ['No Data'],
+            chart: { type: 'donut', height: 300, background: 'transparent' },
+            theme: { mode: 'dark' }, colors: ['#6366f1', '#8b5cf6', '#ec4899', '#10b981']
+        });
+        chartInstanceCategory.render();
+    }
+
+    // --- SALES & PURCHASES ---
+    async function loadSales() {
+        const { data: sales } = await _supabase.from('transactions')
+            .select('*, listings(title), buyer:buyer_id(full_name)')
+            .eq('seller_id', currentUser.id).order('created_at', { ascending: false });
+
+        const tbody = document.getElementById('salesList');
+        if(!sales || !sales.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No orders.</td></tr>'; return; }
+
+        tbody.innerHTML = sales.map(tx => {
+            let actions = '-';
+            if(tx.status === 'pending') actions = `<button onclick="updateStatus('${tx.id}','confirmed');event.stopPropagation()" class="btn success" style="padding:4px 8px;">Confirm</button>`;
+            else if(tx.status === 'confirmed') actions = `<button onclick="updateStatus('${tx.id}','shipped');event.stopPropagation()" class="btn primary" style="padding:4px 8px;">Ship</button>`;
+            else if(tx.status === 'shipped') actions = `<button onclick="updateStatus('${tx.id}','delivered');event.stopPropagation()" class="btn outline" style="padding:4px 8px;">Deliver</button>`;
+            
+            return `<tr onclick="openDetails('${tx.id}')"><td>${tx.listings?.title}</td><td>${tx.buyer?.full_name}</td><td>${new Date(tx.created_at).toLocaleDateString()}</td><td><span class="badge ${tx.status}">${tx.status}</span></td><td>${actions}</td></tr>`;
+        }).join('');
+    }
+
+    async function updateStatus(id, status) {
+        if(!confirm(`Update status to ${status}?`)) return;
+        const { error } = await _supabase.from('transactions').update({ status }).eq('id', id);
+        if(error) alert("Error: " + error.message);
+        else loadSales();
+    }
+
+    async function loadPurchases() {
+        const { data: txs } = await _supabase.from('transactions')
+            .select('*, listings(title), seller:seller_id(full_name)')
+            .eq('buyer_id', currentUser.id).order('created_at', { ascending: false });
+
+        const tbody = document.getElementById('purchasesList');
+        if(!txs || !txs.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No purchases.</td></tr>'; return; }
+
+        tbody.innerHTML = txs.map(tx => {
+            let action = `<a href="tracking.html?tx=${tx.id}" class="btn outline" style="padding:4px 10px;">Track</a>`;
+            if(tx.status !== 'completed' && tx.status !== 'cancelled') {
+                action += ` <button onclick="markReceived('${tx.id}')" class="btn success" style="padding:4px 10px; margin-left:5px;">Received</button>`;
+            }
+            return `<tr><td>${tx.listings?.title}</td><td>${new Date(tx.created_at).toLocaleDateString()}</td><td>${tx.seller?.full_name}</td><td><span class="badge ${tx.status}">${tx.status}</span></td><td>RM ${tx.amount_paid}</td><td>${action}</td></tr>`;
+        }).join('');
+    }
+
+    async function markReceived(id) {
+        if(!confirm("Confirm item received?")) return;
+        const { error } = await _supabase.from('transactions').update({ status: 'completed' }).eq('id', id);
+        if(error) alert(error.message);
+        else loadPurchases();
+    }
+
+    // --- LISTINGS CRUD ---
+    async function loadListings() {
+        const { data: items } = await _supabase.from('listings').select('*').eq('seller_id', currentUser.id);
+        const grid = document.getElementById('listingsGrid');
+        if(!items || !items.length) { grid.innerHTML = '<p>No listings.</p>'; return; }
+        
+        grid.innerHTML = items.map(i => `
+            <div class="listing-card">
+                <img src="${i.image_url}" class="listing-img" onerror="this.src='https://via.placeholder.com/150'">
+                <div class="listing-body">
+                    <div class="listing-title">${i.title}</div>
+                    <div style="color:var(--success); font-weight:bold;">RM ${i.price}</div>
+                    <div style="font-size:12px; color:var(--muted); margin:5px 0;">Stock: ${i.stock_quantity} • ${i.status}</div>
+                    <div style="display:flex; gap:5px; margin-top:auto;">
+                        <button onclick="editListing('${i.id}')" class="btn outline" style="flex:1;">Edit</button>
+                        <button onclick="deleteListing('${i.id}')" class="btn danger" style="flex:1;">Delete</button>
+                    </div>
+                </div>
+            </div>`).join('');
+    }
+
+    document.getElementById('listingImagePreview').addEventListener('click', () => document.getElementById('listingImageInput').click());
+    document.getElementById('listingImageInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                document.getElementById('listingImagePreview').style.backgroundImage = `url('${ev.target.result}')`;
+                document.getElementById('listingImageBase64').value = ev.target.result;
+                document.getElementById('listingImagePreview').innerHTML = '';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    async function saveListing() {
+        const id = document.getElementById('editId').value;
+        const payload = {
+            seller_id: currentUser.id,
+            title: document.getElementById('inpTitle').value,
+            price: parseFloat(document.getElementById('inpPrice').value),
+            stock_quantity: parseInt(document.getElementById('inpStock').value),
+            category_id: document.getElementById('inpCategory').value,
+            condition: document.getElementById('inpCondition').value,
+            pickup_location: document.getElementById('inpLocation').value,
+            description: document.getElementById('inpDesc').value,
+            status: 'active'
+        };
+        const newImg = document.getElementById('listingImageBase64').value;
+        if(newImg) payload.image_url = newImg;
+        else if(!id) payload.image_url = document.getElementById('inpImage').value;
+
+        let err;
+        if(id) { const res = await _supabase.from('listings').update(payload).eq('id', id); err = res.error; }
+        else { const res = await _supabase.from('listings').insert(payload); err = res.error; }
+
+        if(err) alert(err.message);
+        else { closeModal('listingModal'); loadListings(); }
+    }
+
+    window.editListing = async (id) => {
+        const { data } = await _supabase.from('listings').select('*').eq('id', id).single();
+        document.getElementById('modalTitle').innerText = 'Edit Listing';
+        document.getElementById('editId').value = id;
+        document.getElementById('inpTitle').value = data.title;
+        document.getElementById('inpPrice').value = data.price;
+        document.getElementById('inpStock').value = data.stock_quantity;
+        document.getElementById('inpCategory').value = data.category_id;
+        document.getElementById('inpCondition').value = data.condition;
+        document.getElementById('inpLocation').value = data.pickup_location;
+        document.getElementById('inpDesc').value = data.description;
+        document.getElementById('listingImagePreview').style.backgroundImage = `url('${data.image_url}')`;
+        document.getElementById('listingImageBase64').value = data.image_url;
+        openModal('listingModal');
+    };
+
+    window.deleteListing = async (id) => {
+        if(confirm("Delete this listing?")) { await _supabase.from('listings').delete().eq('id', id); loadListings(); }
+    };
+
+    // --- REVIEWS & DISPUTES ---
+    async function loadReviewsReceived() {
+        const { data } = await _supabase.from('reviews')
+            .select(`*, reviewer:reviewer_id(full_name), transactions:transaction_id(id, amount_paid, created_at, shipping_method, listings(title, image_url), payments(method))`)
+            .eq('seller_id', currentUser.id)
+            .order('created_at', { ascending: false });
+
+        document.getElementById('reviewsList').innerHTML = data?.map(r => {
+            const tx = r.transactions || {};
+            const listing = tx.listings || {};
+            const payment = tx.payments || {}; 
+            const payMethod = payment.method || tx.shipping_method || 'N/A';
+            const img = listing.image_url || 'https://via.placeholder.com/60';
+
+            return `
+            <div class="review-card-detailed">
+                <img src="${img}" class="review-img">
+                <div class="review-main">
+                    <div class="review-header-row">
+                        <div class="review-product-title">${listing.title || 'Unknown Item'}</div>
+                        <div class="review-stars">${'★'.repeat(r.rating)}</div>
+                    </div>
+                    <div class="review-meta">
+                        <span>🆔 Tx: ${tx.id?.slice(0,8) || 'N/A'}</span>
+                        <span>📅 ${new Date(tx.created_at).toLocaleDateString()}</span>
+                        <span>👤 Buyer: ${r.reviewer?.full_name}</span>
+                        <span>💳 ${payMethod.toUpperCase()}</span>
+                    </div>
+                    <div class="review-content-box">"${r.content}"</div>
+                    ${r.reply ? `<div class="reply-box">↪ You: ${r.reply}</div>` : `<button onclick="openReply('${r.id}')" class="btn outline" style="padding:4px 8px; font-size:12px; width:fit-content;">Reply</button>`}
+                </div>
+            </div>`;
+        }).join('') || '<p style="text-align:center; color:var(--muted)">No reviews.</p>';
+    }
+
+    async function loadReviewsGiven() {
+        const { data } = await _supabase.from('reviews')
+            .select(`*, seller:seller_id(full_name), transactions:transaction_id(id, amount_paid, created_at, shipping_method, listings(title, image_url), payments(method))`)
+            .eq('reviewer_id', currentUser.id)
+            .order('created_at', { ascending: false });
+
+        document.getElementById('reviewsGivenList').innerHTML = data?.map(r => {
+            const tx = r.transactions || {};
+            const listing = tx.listings || {};
+            const img = listing.image_url || 'https://via.placeholder.com/60';
+
+            return `
+            <div class="review-card-detailed">
+                <img src="${img}" class="review-img">
+                <div class="review-main">
+                    <div class="review-header-row"><div class="review-product-title">${listing.title}</div><div class="review-stars">${'★'.repeat(r.rating)}</div></div>
+                    <div class="review-meta"><span>🆔 Tx: ${tx.id?.slice(0,8)}</span><span>👤 Seller: ${r.seller?.full_name}</span></div>
+                    <div class="review-content-box">"${r.content}"</div>
+                    <button onclick="openEditReview('${r.id}', '${r.rating}', '${r.content}')" class="btn outline" style="padding:4px 8px; font-size:12px; width:fit-content; margin-top:5px;">Edit</button>
+                </div>
+            </div>`;
+        }).join('') || '<p style="text-align:center; color:var(--muted)">No reviews given.</p>';
+    }
+
+    window.openReply = (id) => { document.getElementById('replyReviewId').value=id; document.getElementById('replyModal').classList.add('open'); };
+    async function submitReply() {
+        const id = document.getElementById('replyReviewId').value;
+        const text = document.getElementById('replyText').value;
+        await _supabase.from('reviews').update({ reply: text }).eq('id', id);
+        closeModal('replyModal'); loadReviewsReceived();
+    }
+
+    window.openEditReview = (id, rating, content) => {
+        document.getElementById('editReviewId').value = id;
+        document.getElementById('editReviewRating').value = rating;
+        document.getElementById('editReviewText').value = content;
+        document.getElementById('editReviewModal').classList.add('open');
+    }
+
+    async function submitEditReview() {
+        const id = document.getElementById('editReviewId').value;
+        const rating = document.getElementById('editReviewRating').value;
+        const content = document.getElementById('editReviewText').value;
+        await _supabase.from('reviews').update({ rating, content }).eq('id', id);
+        closeModal('editReviewModal'); loadReviewsGiven();
+    }
+
+    // --- UTILS ---
+    async function loadProfileData() {
+        const { data } = await _supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+        if(data) {
+            document.getElementById('profName').value = data.full_name || '';
+            document.getElementById('profPhone').value = data.phone_number || '';
+            document.getElementById('profCampus').value = data.campus_location || '';
+            document.getElementById('profBio').value = data.bio || '';
+            document.getElementById('sidebarAvatar').src = data.avatar_url || 'https://via.placeholder.com/150';
+            document.getElementById('profAvatarPreview').style.backgroundImage = `url('${data.avatar_url}')`;
+            document.getElementById('sidebarName').innerText = data.full_name || 'User';
+        }
+    }
+    
+    document.getElementById('profAvatarPreview').addEventListener('click', () => document.getElementById('avatarInput').click());
+    document.getElementById('avatarInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                const base64 = ev.target.result;
+                document.getElementById('profAvatarPreview').style.backgroundImage = `url('${base64}')`;
+                await _supabase.from('profiles').update({ avatar_url: base64 }).eq('id', currentUser.id);
+                loadProfileData(); 
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    async function saveProfile() {
+        await _supabase.from('profiles').update({
+            full_name: document.getElementById('profName').value,
+            phone_number: document.getElementById('profPhone').value,
+            campus_location: document.getElementById('profCampus').value,
+            bio: document.getElementById('profBio').value
+        }).eq('id', currentUser.id);
+        alert("Profile Updated");
+    }
+
+    window.openModal = (id) => document.getElementById(id).classList.add('open');
+    window.closeModal = (id) => document.getElementById(id).classList.remove('open');
+    async function logout() { await _supabase.auth.signOut(); window.location.href='index.html'; }
+    function toggleTheme() {
+        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        document.getElementById('themeIcon').innerText = next === 'dark' ? '🌙' : '☀️';
+    }
+
+    async function loadDisputes(role) {
+        const col = role === 'buyer' ? 'buyer_id' : 'seller_id';
+        const divId = role === 'buyer' ? 'buyerDisputes' : 'sellerDisputes';
+        const { data } = await _supabase.from('disputes').select('*, transactions(id)').eq(col, currentUser.id);
+        document.getElementById(divId).innerHTML = data?.map(d => `<div class="card"><strong>${d.reason}</strong>: ${d.description} <span class="badge ${d.status}">${d.status}</span></div>`).join('') || 'No disputes.';
+    }
+
+    async function openDetails(txId) {
+        const panel = document.getElementById('detailsPanel');
+        panel.classList.add('open');
+        document.getElementById('detailsContent').innerHTML = 'Loading...';
+        const { data: tx } = await _supabase.from('transactions').select(`*, listings(*), buyer:buyer_id(*), seller:seller_id(*)`).eq('id', txId).single();
+        if(!tx) return;
+        
+        const isBuyer = tx.buyer_id === currentUser.id;
+        let actions = isBuyer ? `<a href="tracking.html?tx=${tx.id}" class="btn primary" style="width:100%; justify-content:center;">Track Order</a>` : '';
+        if(isBuyer && tx.status !== 'completed') actions += `<button onclick="openDispute('${tx.id}','${tx.seller_id}')" class="btn danger" style="width:100%; margin-top:10px;">Raise Dispute</button>`;
+
+        document.getElementById('detailsContent').innerHTML = `
+            <div class="details-row"><span>Status</span><span class="badge ${tx.status}">${tx.status}</span></div>
+            <div class="details-row"><span>Item</span><span>${tx.listings.title}</span></div>
+            <div class="details-row"><span>Amount</span><span>RM ${tx.amount_paid}</span></div>
+            <div class="details-row"><span>Date</span><span>${new Date(tx.created_at).toLocaleDateString()}</span></div>
+            <div style="margin-top:20px;">${actions}</div>
+        `;
+    }
+    window.closeDetails = () => document.getElementById('detailsPanel').classList.remove('open');
+    window.openDispute = (txId, sellerId) => { document.getElementById('disputeTxId').value = txId; document.getElementById('disputeSellerId').value = sellerId; document.getElementById('disputeModal').classList.add('open'); };
+    async function submitDispute() {
+        const payload = { transaction_id: document.getElementById('disputeTxId').value, buyer_id: currentUser.id, seller_id: document.getElementById('disputeSellerId').value, reason: document.getElementById('disputeReason').value, description: document.getElementById('disputeDesc').value, status: 'ongoing' };
+        await _supabase.from('disputes').insert(payload);
+        alert("Dispute submitted."); closeModal('disputeModal');
+    }
+
+    init();
+  </script>
+</body>
+</html>
