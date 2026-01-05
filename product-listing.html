@@ -159,6 +159,70 @@
             display: inline-block; width: 24px; height: 24px; border: 3px solid var(--muted); border-radius: 50%;
             border-top-color: var(--accent); animation: spin 1s ease-in-out infinite; margin-right: 10px;
         }
+        /* CATEGORY CARDS CONTAINER (Horizontal Scroll) */
+        .categories {
+            display: flex;
+            gap: 16px;
+            overflow-x: auto;
+            padding: 4px 4px 20px 4px; /* Space for shadow/scroll */
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+        }
+        .categories::-webkit-scrollbar { display: none; /* Hide scrollbar Chrome/Safari */ }
+
+        /* INDIVIDUAL CARD */
+        .category {
+            flex: 0 0 auto; /* Don't shrink */
+            width: 100px;   /* Fixed width */
+            height: 100px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* CARD HOVER & ACTIVE STATES */
+        .category:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+            box-shadow: 0 8px 15px var(--shadow);
+        }
+        .category.active {
+            background: rgba(59, 130, 246, 0.1); /* Light blue bg */
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+        }
+
+        /* CARD IMAGE */
+        .category-icon {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            transition: transform 0.2s;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+        .category:hover .category-icon {
+            transform: scale(1.1);
+        }
+
+        /* CARD TEXT */
+        .category span {
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.2;
+        }
         @keyframes spin { to { transform: rotate(360deg); } }
 
         @media (max-width:1200px){ .grid{grid-template-columns:repeat(auto-fill, minmax(280px,1fr));} }
@@ -274,32 +338,60 @@
             document.getElementById('themeIcon').textContent = next === 'dark' ? '🌙' : '☀️';
         });
 
-        // =================================================================
-        // 3. DATA LOADING
-        // =================================================================
-        
-        async function loadCategories() {
+async function loadCategories() {
+            // Mapping: Category Name -> Icon URL
+            // Using high-quality 3D/Flat icons for the "Card" look
+            const categoryIcons = {
+                'all': 'https://cdn-icons-png.flaticon.com/512/3502/3502685.png',
+                'Textbooks': 'https://cdn-icons-png.flaticon.com/512/3330/3330314.png', // Book stack
+                'Electronics': 'https://cdn-icons-png.flaticon.com/512/3659/3659898.png', // Gadgets
+                'Furniture': 'https://cdn-icons-png.flaticon.com/512/2590/2590525.png', // Chair
+                'Clothing': 'https://cdn-icons-png.flaticon.com/512/3159/3159614.png', // Shirt
+                'Stationery': 'https://cdn-icons-png.flaticon.com/512/2838/2838912.png', // Pencil case
+                'Sports': 'https://cdn-icons-png.flaticon.com/512/2560/2560563.png', // Ball
+                'default': 'https://cdn-icons-png.flaticon.com/512/3523/3523063.png'
+            };
+
             const { data } = await _supabase.from('categories').select('*');
+            
             if (data) {
                 const select = document.getElementById('categoryFilter');
                 const nav = document.getElementById('categoryButtons');
                 
-                // Populate Dropdown
+                // 1. Sync Dropdown (Keep this for the filter panel)
                 select.innerHTML = '<option value="all">All Categories</option>' + 
                     data.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 
-                // Populate Buttons
-                nav.innerHTML = `<button class="category active" data-id="all">All</button>` + 
-                    data.map(c => `<button class="category" data-id="${c.id}">${c.name}</button>`).join('');
+                // 2. Generate Image Cards
+                let cardsHtml = `
+                    <div class="category active" data-id="all">
+                        <img src="${categoryIcons['all']}" class="category-icon" alt="All">
+                        <span>All</span>
+                    </div>
+                `;
 
-                // Bind Button Events
-                nav.querySelectorAll('button').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        nav.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        // Sync dropdown
-                        select.value = btn.dataset.id;
-                        currentFilters.category = btn.dataset.id;
+                cardsHtml += data.map(c => {
+                    const iconUrl = categoryIcons[c.name] || categoryIcons['default'];
+                    return `
+                        <div class="category" data-id="${c.id}">
+                            <img src="${iconUrl}" class="category-icon" alt="${c.name}">
+                            <span>${c.name}</span>
+                        </div>
+                    `;
+                }).join('');
+
+                nav.innerHTML = cardsHtml;
+
+                // 3. Bind Events
+                nav.querySelectorAll('.category').forEach(card => {
+                    card.addEventListener('click', () => {
+                        // Visual update
+                        nav.querySelectorAll('.category').forEach(c => c.classList.remove('active'));
+                        card.classList.add('active');
+                        
+                        // Functional update
+                        select.value = card.dataset.id;
+                        currentFilters.category = card.dataset.id;
                         loadProducts();
                     });
                 });
@@ -451,6 +543,47 @@
                 });
             });
         }
+        // === AUTO-LOGOUT SYSTEM (20 MINS) ===
+    (function() {
+        // 1. Check if user is logged in
+        const session = localStorage.getItem('sb-dkpnhswjjmjligemxoet-auth-token'); // Checks for Supabase session
+        if (!session) return; // If no session, no need to run timer
+
+        // 2. Check "Remember Me" preference
+        const isRemembered = localStorage.getItem('uniTrade_remember') === 'true';
+
+        if (isRemembered) {
+            console.log("🔒 Remember Me active: Auto-logout disabled.");
+            return;
+        }
+
+        console.log("⏳ Public Session: Auto-logout enabled (20 mins).");
+
+        // 3. Setup Timer
+        const TIMEOUT_LIMIT = 20 * 60 * 1000; // 20 Minutes
+        let idleTimer;
+
+        function resetTimer() {
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(logoutUser, TIMEOUT_LIMIT);
+        }
+
+        async function logoutUser() {
+            // Use the global _supabase client if available, otherwise assume session expired
+            if (window._supabase) {
+                await window._supabase.auth.signOut();
+            }
+            alert("For your security, you have been logged out due to 20 minutes of inactivity.");
+            window.location.href = 'index.html';
+        }
+
+        // 4. Listen for any movement
+        window.onload = resetTimer;
+        document.onmousemove = resetTimer;
+        document.onkeypress = resetTimer;
+        document.onclick = resetTimer;
+        document.onscroll = resetTimer;
+    })();
     </script>
 </body>
 </html>

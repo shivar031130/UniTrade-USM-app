@@ -183,6 +183,7 @@
     </div>
 
     <div id="overview" class="tab-content active">
+      <h3>Daily Sales</h3>
       <div class="chart-box">
         <canvas id="revenueChart"></canvas>
       </div>
@@ -375,35 +376,58 @@
     }
 
     // --- USERS ---
-    async function loadUsers() {
-        const { data: users, error } = await _supabase.from('profiles').select('*').order('created_at', { ascending: false });
-        if(error) {
-            console.error("Error loading users:", error);
-            return;
-        }
-        
-        document.getElementById('usersTableBody').innerHTML = users.map(u => {
-            // Strictly check for boolean true
-            const isApproved = u.is_approved === true; 
-            
-            return `
-            <tr>
-                <td><div style="display:flex; align-items:center; gap:10px;"><img src="${u.avatar_url || 'https://via.placeholder.com/40'}" class="table-avatar">${u.full_name}</div></td>
-                <td>${u.email}</td>
-                <td><span class="badge ${u.role}">${u.role}</span></td>
-                <td><span class="badge ${isApproved ? 'active' : 'pending'}">${isApproved ? 'Approved' : 'Pending'}</span></td>
-                <td>${new Date(u.created_at).toLocaleDateString()}</td>
-                <td>
-                    <button class="btn small ghost" onclick='viewDetails(${JSON.stringify(u).replace(/'/g, "&apos;")}, "User")'>View</button>
-                    ${u.role !== 'admin' ? 
-                        `<button class="btn small ${isApproved ? 'danger' : 'success'}" onclick="toggleUser('${u.id}', ${!isApproved})">
-                            ${isApproved ? 'Revoke' : 'Approve'}
-                        </button>` 
-                        : ''}
-                </td>
-            </tr>`;
-        }).join('');
+// REPLACE your existing loadUsers function with this:
+
+async function loadUsers() {
+    console.log("Attempting to load users...");
+
+    const { data: users, error } = await _supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    // 1. Log Errors
+    if(error) {
+        console.error("CRITICAL ERROR loading users:", error);
+        alert("Error loading users: " + error.message);
+        return;
     }
+    
+    // 2. Log Data Count
+    console.log("Users found:", users.length, users);
+
+    if (!users || users.length === 0) {
+        document.getElementById('usersTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No users found in database.</td></tr>';
+        return;
+    }
+    
+    // 3. Render
+    document.getElementById('usersTableBody').innerHTML = users.map(u => {
+        const isApproved = u.is_approved === true; 
+        
+        return `
+        <tr>
+            <td>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <img src="${u.avatar_url || 'https://via.placeholder.com/40'}" class="table-avatar" onerror="this.src='https://via.placeholder.com/40'">
+                    ${u.full_name || 'No Name'}
+                </div>
+            </td>
+            <td>${u.email || '-'}</td>
+            <td><span class="badge ${u.role}">${u.role}</span></td>
+            <td><span class="badge ${isApproved ? 'active' : 'pending'}">${isApproved ? 'Approved' : 'Pending'}</span></td>
+            <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
+            <td>
+                <button class="btn small ghost" onclick='viewDetails(${JSON.stringify(u).replace(/'/g, "&apos;")}, "User")'>View</button>
+                ${u.role !== 'admin' ? 
+                    `<button class="btn small ${isApproved ? 'danger' : 'success'}" onclick="toggleUser('${u.id}', ${!isApproved})">
+                        ${isApproved ? 'Revoke' : 'Approve'}
+                    </button>` 
+                    : ''}
+            </td>
+        </tr>`;
+    }).join('');
+}
 
     async function toggleUser(id, targetStatus) {
         // Enforce Boolean Type
@@ -637,7 +661,6 @@ async function setListing(id, status) {
     window.switchTab = (t) => { document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active')); document.querySelector(`button[onclick*='${t}']`).classList.add('active'); document.getElementById(t).classList.add('active'); };
     function toggleTheme() { const n = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme', n); document.getElementById('themeIcon').innerText=n==='dark'?'🌙':'☀️'; }
     async function logout() { await _supabase.auth.signOut(); window.location.href='index.html'; }
-
     init();
   </script>
 </body>

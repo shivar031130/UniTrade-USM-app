@@ -255,8 +255,68 @@
     /* Add a colored glow effect with a stronger shadow */
     box-shadow: 0 25px 60px rgba(139, 92, 246, 0.25);
 }
+/* CATEGORY CARDS (Horizontal Scroll) */
+.categories {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding: 4px 4px 20px 4px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.categories::-webkit-scrollbar { display: none; }
 
-/* Optional: Make the placeholder content inside the card light up too */
+/* CARD STYLE */
+.category {
+    flex: 0 0 auto;
+    /* CHANGE THESE TWO LINES */
+    width: 130px;  /* Wider */
+    height: 90px;  /* Shorter */
+    /* ----------------------- */
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px; /* Slightly reduced gap since height is smaller */
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    text-align: center;
+    padding: 8px; /* Ensure text doesn't hit edges */
+}
+/* HOVER & ACTIVE */
+.category:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent);
+    box-shadow: 0 8px 15px var(--shadow);
+}
+.category.active {
+    background: rgba(59, 130, 246, 0.1);
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+/* Reduce icon size slightly to fit better in the shorter card */
+.category-icon {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    transition: transform 0.2s;
+}
+.category:hover .category-icon { transform: scale(1.1); }
+.category span {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap; /* Keeps text on one line */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Adds "..." if text is too long */
+    max-width: 100%;
+}
 .graphic-card:hover .gc-thumb,
 .graphic-card:hover .gc-line {
     background: rgba(255, 255, 255, 0.1);
@@ -276,9 +336,26 @@
 			transform: rotateX(-10deg) rotateY(-5deg) rotateZ(3deg);
 			animation: float 12s ease-in-out infinite;
 		}
-		.gc-thumb { width: 100%; height: 60%; background: var(--input-bg); border-radius: 8px; margin-bottom: 12px; }
-		.gc-line { width: 80%; height: 10px; background: var(--input-bg); border-radius: 4px; margin-bottom: 8px; }
-		.gc-line.short { width: 50%; }
+/* Update your existing .gc-thumb style or add this below it */
+.gc-thumb {
+    width: 100%;
+    height: 100px; /* Or whatever height you had defined */
+    background: var(--muted); /* Fallback color */
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden; /* Keeps the image inside the rounded corners */
+    position: relative;
+}
+
+/* NEW: Style for the image inside */
+.gc-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* This makes the image fill the box perfectly */
+    display: block;
+}
+.gc-line { width: 80%; height: 10px; background: var(--input-bg); border-radius: 4px; margin-bottom: 8px; }
+.gc-line.short { width: 50%; }
 /* === ADD THIS ENTIRE NEW RULE === */
 @keyframes fluid-3d-text {
     0% {
@@ -658,17 +735,17 @@
 				</div>
 				<div id="userActions" class="hidden">
     <div class="user-menu">
-        <div class="user-avatar" id="userAvatar">U</div>
+    <div class="user-avatar" id="userAvatar">U</div>
+    
+    <div class="user-dropdown" id="userDropdown">
+        <a href="dashboard.html" id="userDashLink">My Dashboard</a>
+        <a href="chat.html">Messages</a>
+        <a href="admin.html" id="adminLink" class="hidden">Admin Dashboard</a>
         
-        <div class="user-dropdown" id="userDropdown">
-            <a href="dashboard.html">My Dashboard</a>
-            <a href="chat.html">Messages</a>
-            <a href="admin.html" id="adminLink" class="hidden">Admin Dashboard</a>
-            
-            <hr style="border:0; border-top:1px solid var(--border); margin:0;">
-            <a href="#" id="btnLogout">Logout</a>
-        </div>
+        <hr style="border:0; border-top:1px solid var(--border); margin:0;">
+        <a href="#" id="btnLogout">Logout</a>
     </div>
+</div>
 </div>
 			</div>
 		</header>
@@ -680,21 +757,29 @@
 				<a href="#listings" class="btn">Explore Listings</a>
 			</div>
 			<div class="hero-graphics" aria-hidden="true">
-				<div class="graphic-card gc-1">
-					<div class="gc-thumb"></div>
-					<div class="gc-line"></div>
-					<div class="gc-line short"></div>
-				</div>
-				<div class="graphic-card gc-2">
-					<div class="gc-thumb"></div>
-					<div class="gc-line"></div>
-					<div class="gc-line short"></div>
-				</div>
-				<div class="graphic-card gc-3">
-					<div class="gc-thumb"></div>
-					<div class="gc-line"></div>
-				</div>
-			</div>
+    <div class="graphic-card gc-1">
+        <div class="gc-thumb">
+            <img src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=300&q=80" alt="Textbook">
+        </div>
+        <div class="gc-line"></div>
+        <div class="gc-line short"></div>
+    </div>
+
+    <div class="graphic-card gc-2">
+        <div class="gc-thumb">
+            <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=300&q=80" alt="Headphones">
+        </div>
+        <div class="gc-line"></div>
+        <div class="gc-line short"></div>
+    </div>
+
+    <div class="graphic-card gc-3">
+        <div class="gc-thumb">
+            <img src="https://web14.bernama.com/storage/photos/104435f0d157dbfb34a38410244b81a56888bf33cefce" alt="USM">
+        </div>
+        <div class="gc-line"></div>
+    </div>
+</div>
 		</section>
 		<!-- === End Landing Section === -->
 
@@ -771,13 +856,26 @@
 		</footer>
 	</div>
 
-    <!-- Modals -->
     <div id="loginModal" class="modal-backdrop">
         <div class="modal auth-form">
             <h2>Login to UniTrade</h2>
             <form id="loginForm">
-                <div class="form-group"><label>Email</label><input type="email" id="lEmail" placeholder="your@student.usm.my" required></div>
-                <div class="form-group"><label>Password</label><input type="password" id="lPass" placeholder="••••••••" required></div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="lEmail" placeholder="your@student.usm.my" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="lPass" placeholder="••••••••" required>
+                </div>
+
+                <div style="margin: 10px 0 20px;">
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:var(--text); font-weight:500;">
+                        <input type="checkbox" id="lRemember" style="width:auto; margin:0; cursor:pointer;"> 
+                        Remember Me 
+                        <span style="color:var(--muted); font-size:12px;">(Skip auto-logout)</span>
+                    </label>
+                </div>
                 <div style="display:flex; gap:8px; margin-top:16px;">
                     <button type="button" class="btn ghost" onclick="closeModal('loginModal')" style="flex:1">Cancel</button>
                     <button type="submit" class="btn" style="flex:1">Login</button>
@@ -917,10 +1015,20 @@
                     avatarEl.innerText = profile.full_name ? profile.full_name.charAt(0).toUpperCase() : 'U';
                 }
 
-                // Show Admin Link
-                if (profile.role === 'admin') {
-                    document.getElementById('adminLink').classList.remove('hidden');
-                }
+                // 1. Get the links
+            const adminLink = document.getElementById('adminLink');
+            const userDashLink = document.getElementById('userDashLink');
+
+            // 2. CHECK ROLE & TOGGLE VISIBILITY
+            if (profile.role === 'admin') {
+                // IS ADMIN: Show Admin Panel, HIDE User Dashboard
+                if (adminLink) adminLink.classList.remove('hidden');
+                if (userDashLink) userDashLink.classList.add('hidden');
+            } else {
+                // IS STUDENT: Hide Admin Panel, SHOW User Dashboard
+                if (adminLink) adminLink.classList.add('hidden');
+                if (userDashLink) userDashLink.classList.remove('hidden');
+            }
             }
 
             // Logout Handler
@@ -949,37 +1057,62 @@
     // =================================================================
     // 2. FORM HANDLERS
     // =================================================================
+// --- LOGIN (Enforces Admin Approval) ---
+async function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('lEmail').value;
+    const password = document.getElementById('lPass').value;
+    const rememberMe = document.getElementById('lRemember').checked;
     
-    // --- LOGIN ---
-    async function handleLogin(e) {
-        e.preventDefault();
-        const email = document.getElementById('lEmail').value;
-        const password = document.getElementById('lPass').value;
+    // Save "Remember Me" preference
+    if (rememberMe) localStorage.setItem('uniTrade_remember', 'true');
+    else localStorage.removeItem('uniTrade_remember');
+
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerText = "Verifying...";
+
+    // 1. Attempt Login
+    const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+    
+    if (error) {
+        alert(error.message);
+        btn.disabled = false;
+        btn.innerText = "Login";
+        return;
+    }
+
+    if (data.user) {
+        // 2. FETCH PROFILE TO CHECK APPROVAL STATUS
+        const { data: profile, error: profileError } = await _supabase
+            .from('profiles')
+            .select('role, is_approved')
+            .eq('id', data.user.id)
+            .single();
         
-        const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-        
-        if (error) {
-            alert(error.message);
+        // 3. SECURITY CHECK: IS ACCOUNT APPROVED?
+        // Note: Admins are exempt from this check to prevent lockout
+        if (profile && profile.role !== 'admin' && profile.is_approved !== true) {
+            // REJECT LOGIN
+            await _supabase.auth.signOut(); // Kick them out immediately
+            alert("Access Denied: Your account is still pending Admin Approval.\nPlease check back later.");
+            btn.disabled = false;
+            btn.innerText = "Login";
             return;
         }
 
-        // Check if Admin
-        if (data.user) {
-            const { data: profile } = await _supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', data.user.id)
-                .single();
-            
-            if (profile && profile.role === 'admin') {
-                window.location.href = 'admin.html';
-            } else {
-                window.location.reload();
-            }
+        // 4. APPROVED: Redirect based on role
+        if (profile && profile.role === 'admin') {
+            window.location.href = 'admin.html';
+        } else {
+            window.location.reload();
         }
     }
+}
 
     // --- REGISTER (Fixes Avatar & Campus Issue) ---
+    // --- REGISTER (Allows USM & Gmail + Fixes Auto-Login) ---
+    // --- REGISTER (Safe Auto-Logout Fix) ---
     async function handleRegister(e) {
         e.preventDefault();
         
@@ -991,60 +1124,71 @@
         const password = document.getElementById('rPass').value;
         const fullName = document.getElementById('rName').value;
         const phone = document.getElementById('rPhone').value;
-        const campus = document.getElementById('rCampus').value; // Ensure this is not empty
-    // --- VALIDATION CHECK: MUST BE USM EMAIL ---
-    		if (!email.endsWith('@student.usm.my')) {
-        		alert("Registration is restricted to USM students only.\nPlease use your @student.usm.my email address.");
-        		submitBtn.disabled = false;
-        		submitBtn.innerText = "Create Account";
-        	return; // Stop execution here
-    	}
+        const campus = document.getElementById('rCampus').value; 
+
+        // --- VALIDATION: USM OR GMAIL ---
+        if (!email.endsWith('@student.usm.my') && !email.endsWith('@gmail.com')) {
+            alert("Registration is restricted to USM students (@student.usm.my) or Gmail users (@gmail.com).");
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Create Account";
+            return; 
+        }
+
         // 1. Handle Avatar Upload
-        let finalAvatarUrl = ""; // Default empty
+        let finalAvatarUrl = ""; 
         const fileInput = document.getElementById('rFile');
         const file = fileInput.files[0];
 
         if (file) {
-            // Create unique name
             const fileName = `avatars/${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-            
-            // Upload
-            const { error: uploadError } = await _supabase.storage
-                .from('images')
-                .upload(fileName, file);
-
-            if (uploadError) {
-                console.warn("Avatar upload failed:", uploadError);
-            } else {
-                // Get Full Public URL
+            const { error: uploadError } = await _supabase.storage.from('images').upload(fileName, file);
+            if (!uploadError) {
                 const { data } = _supabase.storage.from('images').getPublicUrl(fileName);
                 finalAvatarUrl = data.publicUrl;
             }
         }
 
-        // 2. Sign Up (Send data to Trigger)
-        const { error } = await _supabase.auth.signUp({
+        // 2. Sign Up
+        const { data, error } = await _supabase.auth.signUp({
             email, 
             password,
             options: { 
                 data: { 
                     full_name: fullName, 
                     phone_number: phone, 
-                    avatar_url: finalAvatarUrl, // This sends the full link
-                    campus_location: campus     // This sends the campus string
+                    avatar_url: finalAvatarUrl, 
+                    campus_location: campus 
                 } 
             }
         });
 
+        // Error Handling
+        if (error) {
+            alert(error.message);
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Create Account";
+            return;
+        }
+
+        // 3. FIX: SAFE AUTO-LOGOUT
+        // We attempt to sign out. If it fails (403), we ignore it because 
+        // the user is effectively not logged in anyway.
+        if (data && data.session) {
+            await _supabase.auth.signOut().catch(() => {
+                // Ignore errors here. If logout fails, it usually means 
+                // the session wasn't active, which is what we want.
+                console.log("Suppressing logout error during registration.");
+            });
+            
+            // Double ensure local storage is clear just in case
+            localStorage.removeItem('sb-dkpnhswjjmjligemxoet-auth-token');
+        }
+
         submitBtn.disabled = false;
         submitBtn.innerText = "Create Account";
 
-        if(error) {
-            alert(error.message); 
-        } else { 
-            alert("Registration successful! Please wait for admin approval."); 
-            closeModal('registerModal'); 
-        }
+        alert("Registration successful! Please wait for admin approval."); 
+        closeModal('registerModal'); 
     }
 
     // --- FORGOT PASSWORD (New Function) ---
@@ -1115,26 +1259,71 @@
     }
 
     // =================================================================
-    // 3. DATA LOADING
-    // =================================================================
-    async function loadCategories() {
-        const { data } = await _supabase.from('categories').select('*');
-        if(data) {
-            const sel = document.getElementById('cCat'); 
-            const nav = document.getElementById('categoryButtons');
-            const filter = document.getElementById('catSelect');
-            
-            if (nav) nav.innerHTML = `<button class="category active" onclick="loadItems('all')">All</button>`;
-            if (sel) sel.innerHTML = "";
-            if (filter) filter.innerHTML = `<option value="all">All</option>`;
-            
-            data.forEach(c => {
-                if (sel) sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-                if (filter) filter.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-                if (nav) nav.innerHTML += `<button class="category" onclick="loadItems(${c.id})">${c.name}</button>`;
-            });
+// 3. DATA LOADING (Updated for Image Cards)
+// =================================================================
+async function loadCategories() {
+    // 1. Define Icons (Same as your products page)
+    const categoryIcons = {
+        'all': 'https://cdn-icons-png.flaticon.com/512/3502/3502685.png', // The colorful grid icon
+        'Textbooks': 'https://cdn-icons-png.flaticon.com/512/3330/3330314.png',
+        'Electronics': 'https://cdn-icons-png.flaticon.com/512/3659/3659898.png',
+        'Furniture': 'https://cdn-icons-png.flaticon.com/512/2590/2590525.png',
+        'Clothing': 'https://cdn-icons-png.flaticon.com/512/3159/3159614.png',
+        'Stationery': 'https://cdn-icons-png.flaticon.com/512/2838/2838912.png',
+        'Sports': 'https://cdn-icons-png.flaticon.com/512/2560/2560563.png',
+        'default': 'https://cdn-icons-png.flaticon.com/512/3523/3523063.png'
+    };
+
+    const { data } = await _supabase.from('categories').select('*');
+    
+    if (data) {
+        const sel = document.getElementById('cCat');       // Modal Dropdown
+        const nav = document.getElementById('categoryButtons'); // Image Cards Container
+        const filter = document.getElementById('catSelect');    // Filter Dropdown
+        
+        // --- INITIALIZE DROPDOWNS ---
+        if (sel) sel.innerHTML = ""; 
+        if (filter) filter.innerHTML = `<option value="all">All</option>`;
+        
+        // --- INITIALIZE IMAGE CARDS (Add 'All' first) ---
+        if (nav) {
+            nav.innerHTML = `
+                <div class="category active" onclick="selectCategory('all', this)">
+                    <img src="${categoryIcons['all']}" class="category-icon" alt="All">
+                    <span>All</span>
+                </div>
+            `;
         }
+        
+        // --- LOOP DATA ---
+        data.forEach(c => {
+            // 1. Populate Dropdowns (Standard Text)
+            if (sel) sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            if (filter) filter.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            
+            // 2. Populate Image Cards
+            if (nav) {
+                const iconUrl = categoryIcons[c.name] || categoryIcons['default'];
+                nav.innerHTML += `
+                    <div class="category" onclick="selectCategory('${c.id}', this)">
+                        <img src="${iconUrl}" class="category-icon" alt="${c.name}">
+                        <span>${c.name}</span>
+                    </div>
+                `;
+            }
+        });
     }
+}
+
+// --- HELPER FUNCTION: Handles Visual Click & Calls Logic ---
+function selectCategory(catId, element) {
+    // 1. Visual: Switch 'active' class
+    document.querySelectorAll('.category').forEach(el => el.classList.remove('active'));
+    if (element) element.classList.add('active');
+
+    // 2. Logic: Call your original loadItems function
+    loadItems(catId);
+}
 
     async function loadItems(catId = 'all') {
         if(typeof catId === 'number' || catId === 'all'){
@@ -1178,7 +1367,47 @@
             grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; color:var(--muted); padding:40px;">No items found.</p>`;
         }
     }
+// === AUTO-LOGOUT SYSTEM (20 MINS) ===
+    (function() {
+        // 1. Check if user is logged in
+        const session = localStorage.getItem('sb-dkpnhswjjmjligemxoet-auth-token'); // Checks for Supabase session
+        if (!session) return; // If no session, no need to run timer
 
+        // 2. Check "Remember Me" preference
+        const isRemembered = localStorage.getItem('uniTrade_remember') === 'true';
+
+        if (isRemembered) {
+            console.log("🔒 Remember Me active: Auto-logout disabled.");
+            return;
+        }
+
+        console.log("⏳ Public Session: Auto-logout enabled (20 mins).");
+
+        // 3. Setup Timer
+        const TIMEOUT_LIMIT = 20 * 60 * 1000; // 20 Minutes
+        let idleTimer;
+
+        function resetTimer() {
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(logoutUser, TIMEOUT_LIMIT);
+        }
+
+        async function logoutUser() {
+            // Use the global _supabase client if available, otherwise assume session expired
+            if (window._supabase) {
+                await window._supabase.auth.signOut();
+            }
+            alert("For your security, you have been logged out due to 20 minutes of inactivity.");
+            window.location.href = 'index.html';
+        }
+
+        // 4. Listen for any movement
+        window.onload = resetTimer;
+        document.onmousemove = resetTimer;
+        document.onkeypress = resetTimer;
+        document.onclick = resetTimer;
+        document.onscroll = resetTimer;
+    })();
     // =================================================================
     // 4. INITIALIZATION
     // =================================================================
