@@ -11,7 +11,16 @@
 		const openModal = (id) => { document.getElementById(id).classList.add('show'); document.body.style.overflow='hidden'; }
     const closeModal = (id) => { document.getElementById(id).classList.remove('show'); document.body.style.overflow=''; }
     const switchModal = (closeId, openId) => { closeModal(closeId); openModal(openId); }
+    // SECURITY CHECK: Run immediately
+    // If no token exists in local storage, kick them out instantly.
+    // This prevents the "Back Button" exploit.
+    const hasSupabaseToken = Object.keys(localStorage).some(k => k.startsWith('sb-') || k.includes('supabase'));
     
+    if (!hasSupabaseToken) {
+       // Stop the browser from rendering the rest of the page
+       document.body.style.display = 'none'; 
+       window.location.replace('index.html');
+    }
     function toggleTheme() {
         const current = document.documentElement.getAttribute('data-theme');
         const next = current === 'dark' ? 'light' : 'dark';
@@ -1031,12 +1040,26 @@
             }
             }
 
-            // Logout Handler
-            document.getElementById('btnLogout').onclick = async (e) => {
-                e.preventDefault();
-                await _supabase.auth.signOut();
-                window.location.reload();
-            };
+            // Strict Logout Handler
+document.getElementById('btnLogout').onclick = async (e) => {
+    e.preventDefault();
+    
+    // 1. IMMEDIATE CLEANUP (The "Nuclear" Option)
+    // We wipe the keys first. Even if the internet crashes in the next line, 
+    // the user is effectively logged out locally.
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // 2. ATTEMPT SERVER LOGOUT
+    // We do NOT use 'await' here. We trigger it and move on immediately.
+    // This prevents the "freeze" if Supabase is slow.
+    _supabase.auth.signOut(); 
+
+    // 3. SECURE REDIRECT
+    // Use .replace() so they cannot press the "Back" button to return.
+    // Assumes 'index.html' is your login/landing page.
+    window.location.replace('index.html'); 
+};
 
             setupDropdown();
         } else {

@@ -134,8 +134,9 @@
     input:focus, textarea:focus { border-color: var(--accent); }
 
     /* IMAGE PREVIEW */
-    .image-preview-box { width: 100%; height: 150px; border: 2px dashed var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background-size: cover; background-position: center; position: relative; margin-bottom: 10px; transition: 0.2s; }
+    .image-preview-box { width: 100%; height: 200px; border: 2px dashed var(--border); border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; background-color: var(--card); background-size: cover; background-position: center; background-repeat: no-repeat; transition: 0.2s; position: relative; overflow: hidden; }
     .image-preview-box:hover { border-color: var(--accent); background-color: var(--card-hover); }
+    .image-preview-box.has-image span { display: none; }
     .image-preview-box span { font-size: 13px; color: var(--muted); pointer-events: none; }
 
     /* PROFILE AVATAR */
@@ -157,7 +158,11 @@
     .details-panel { position: fixed; top: 0; right: -500px; width: 450px; height: 100vh; background: var(--card); border-left: 1px solid var(--border); padding: 30px; transition: 0.3s ease; z-index: 200; overflow-y: auto; box-shadow: -5px 0 30px rgba(0,0,0,0.3); }
     .details-panel.open { right: 0; }
     .details-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
-
+    .checkbox-group { display: flex; gap: 15px; margin-bottom: 16px; margin-top: 5px; }
+    .checkbox-group label { display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text); font-size: 14px; border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; background: var(--input-bg); }
+    .checkbox-group input { width: auto; margin: 0; }
+    .checkbox-group label:has(input:checked) { border-color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+    
     @media(max-width: 900px) { 
         .layout { flex-direction: column; height: auto; } 
         .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); } 
@@ -298,7 +303,20 @@
         </div>
 
         <div id="tab-reviews-received" class="tab-content hidden"><div class="section-header"><h1>Reviews Received</h1></div><div id="reviewsList"></div></div>
-        <div id="tab-reviews-given" class="tab-content hidden"><div class="section-header"><h1>My Reviews Given</h1></div><div id="reviewsGivenList"></div></div>
+        
+        <div id="tab-reviews-given" class="tab-content hidden">
+            <div class="section-header"><h1>My Reviews & Ratings</h1></div>
+            
+            <h3 style="color:var(--accent); margin-bottom:15px;">Pending Reviews (Rate Now)</h3>
+            <div id="pendingReviewsList" class="grid-view" style="margin-bottom: 40px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+                </div>
+
+            <div style="border-top:1px solid var(--border); margin: 20px 0;"></div>
+
+            <h3>Past Reviews (Completed)</h3>
+            <div id="reviewsGivenList"></div>
+        </div>
+
         <div id="tab-disputes-buyer" class="tab-content hidden"><div class="section-header"><h1>My Disputes</h1></div><div id="buyerDisputes"></div></div>
         <div id="tab-disputes-seller" class="tab-content hidden"><div class="section-header"><h1>Disputes Against Me</h1></div><div id="sellerDisputes"></div></div>
 
@@ -357,13 +375,38 @@
         </div>
         
         <div class="form-group"><label>Pickup Location</label><input id="inpLocation"></div>
+ <div class="form-group">
+    <label>Delivery Options</label>
+    <div style="display:flex; gap:15px; flex-wrap:wrap; margin-top:5px;">
         
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" class="delivery-checkbox" value="Meetup"> 
+            Meetup
+        </label>
+
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" class="delivery-checkbox" value="Seller Pickup"> 
+            Seller Pickup
+        </label>
+
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" class="delivery-checkbox" value="Courier"> 
+            Courier
+        </label>
+        
+    </div>
+</div>
         <div class="form-group">
-            <label>Product Image</label>
-            <div class="image-preview-box" id="listingImagePreview"><span>Click to upload image</span></div>
-            <input type="file" id="listingImageInput" accept="image/*" style="display:none">
-            <input type="hidden" id="listingImageBase64">
-        </div>
+    <label>Product Image</label>
+    
+    <div class="image-preview-box" id="listingImagePreview" onclick="document.getElementById('listingImageInput').click()">
+        <span id="previewText">Click to upload image</span>
+    </div>
+
+    <input type="file" id="listingImageInput" accept="image/*" style="display:none" onchange="uploadToSupabase(event)">
+    
+    <input type="hidden" id="listingImageUrl">
+</div>
 
         <div class="form-group"><label>Description</label><textarea id="inpDesc" rows="4"></textarea></div>
 
@@ -430,6 +473,7 @@
     let salesCache = [];
     let chartInstanceSales = null;
     let chartInstanceCategory = null;
+    let myReviewsCache = [];
 
     // --- INITIALIZATION ---
     async function init() {
@@ -619,17 +663,31 @@
 
     // --- LISTINGS CRUD ---
     async function loadListings() {
-        const { data: items } = await _supabase.from('listings').select('*').eq('seller_id', currentUser.id);
+        // 1. UPDATE QUERY: Added .neq('status', 'deleted')
+        const { data: items } = await _supabase
+            .from('listings')
+            .select('*')
+            .eq('seller_id', currentUser.id)
+            .neq('status', 'deleted'); // <--- THIS MAKES THEM DISAPPEAR
+
         const grid = document.getElementById('listingsGrid');
-        if(!items || !items.length) { grid.innerHTML = '<p>No listings.</p>'; return; }
         
+        // 2. Handle empty state
+        if(!items || !items.length) { 
+            grid.innerHTML = '<p style="color:var(--muted); font-style:italic;">No active listings found.</p>'; 
+            return; 
+        }
+        
+        // 3. Render the grid
         grid.innerHTML = items.map(i => `
             <div class="listing-card">
                 <img src="${i.image_url}" class="listing-img" onerror="this.src='https://via.placeholder.com/150'">
                 <div class="listing-body">
                     <div class="listing-title">${i.title}</div>
                     <div style="color:var(--success); font-weight:bold;">RM ${i.price}</div>
-                    <div style="font-size:12px; color:var(--muted); margin:5px 0;">Stock: ${i.stock_quantity} • ${i.status}</div>
+                    <div style="font-size:12px; color:var(--muted); margin:5px 0;">
+                        Stock: ${i.stock_quantity} • <span class="badge ${i.status}">${i.status}</span>
+                    </div>
                     <div style="display:flex; gap:5px; margin-top:auto;">
                         <button onclick="editListing('${i.id}')" class="btn outline" style="flex:1;">Edit</button>
                         <button onclick="deleteListing('${i.id}')" class="btn danger" style="flex:1;">Delete</button>
@@ -645,7 +703,7 @@
             const reader = new FileReader();
             reader.onload = (ev) => {
                 document.getElementById('listingImagePreview').style.backgroundImage = `url('${ev.target.result}')`;
-                document.getElementById('listingImageBase64').value = ev.target.result;
+                document.getElementById('listingImageUrl').value = ev.target.result; // Using Base64 just for preview logic, upload happens separately
                 document.getElementById('listingImagePreview').innerHTML = '';
             };
             reader.readAsDataURL(file);
@@ -654,31 +712,75 @@
 
     async function saveListing() {
         const id = document.getElementById('editId').value;
+        const title = document.getElementById('inpTitle').value;
+        const price = document.getElementById('inpPrice').value;
+        const stock = document.getElementById('inpStock').value;
+        const category = document.getElementById('inpCategory').value;
+        const condition = document.getElementById('inpCondition').value;
+        const location = document.getElementById('inpLocation').value;
+        const desc = document.getElementById('inpDesc').value;
+
+        const checkedOptions = Array.from(document.querySelectorAll('.delivery-checkbox:checked'))
+            .map(box => box.value); 
+        
+        if (checkedOptions.length === 0) {
+            alert("Please select at least one delivery option.");
+            return;
+        }
+
+        const imageUrl = document.getElementById('listingImageUrl').value; 
+        
+        if (!title || !price || !imageUrl) {
+            alert("Please fill in all required fields (Title, Price, Image).");
+            return;
+        }
+
         const payload = {
+            title: title,
+            price: parseFloat(price),
+            stock_quantity: parseInt(stock),
+            category_id: category,
+            condition: condition,
+            pickup_location: location,
+            description: desc,
+            image_url: imageUrl,
             seller_id: currentUser.id,
-            title: document.getElementById('inpTitle').value,
-            price: parseFloat(document.getElementById('inpPrice').value),
-            stock_quantity: parseInt(document.getElementById('inpStock').value),
-            category_id: document.getElementById('inpCategory').value,
-            condition: document.getElementById('inpCondition').value,
-            pickup_location: document.getElementById('inpLocation').value,
-            description: document.getElementById('inpDesc').value,
-            status: 'active'
+            delivery_options: checkedOptions 
         };
-        const newImg = document.getElementById('listingImageBase64').value;
-        if(newImg) payload.image_url = newImg;
-        else if(!id) payload.image_url = document.getElementById('inpImage').value;
 
-        let err;
-        if(id) { const res = await _supabase.from('listings').update(payload).eq('id', id); err = res.error; }
-        else { const res = await _supabase.from('listings').insert(payload); err = res.error; }
+        let error;
+        
+        if(id) {
+            const res = await _supabase.from('listings').update(payload).eq('id', id);
+            error = res.error;
+        } else {
+            payload.status = 'pending';
+            const res = await _supabase.from('listings').insert([payload]);
+            error = res.error;
+        }
 
-        if(err) alert(err.message);
-        else { closeModal('listingModal'); loadListings(); }
+        if(error) {
+            console.error("Save failed:", error);
+            alert("Error saving: " + error.message);
+        } else {
+            closeModal('listingModal');
+            loadListings(); 
+            alert("Listing saved successfully!");
+        }
     }
 
     window.editListing = async (id) => {
-        const { data } = await _supabase.from('listings').select('*').eq('id', id).single();
+        const { data, error } = await _supabase
+            .from('listings')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) {
+            alert("Error fetching listing: " + error.message);
+            return;
+        }
+
         document.getElementById('modalTitle').innerText = 'Edit Listing';
         document.getElementById('editId').value = id;
         document.getElementById('inpTitle').value = data.title;
@@ -688,13 +790,46 @@
         document.getElementById('inpCondition').value = data.condition;
         document.getElementById('inpLocation').value = data.pickup_location;
         document.getElementById('inpDesc').value = data.description;
-        document.getElementById('listingImagePreview').style.backgroundImage = `url('${data.image_url}')`;
-        document.getElementById('listingImageBase64').value = data.image_url;
+
+        document.querySelectorAll('.delivery-checkbox').forEach(cb => cb.checked = false);
+
+        if (data.delivery_options && Array.isArray(data.delivery_options)) {
+            data.delivery_options.forEach(op => {
+                const box = document.querySelector(`.delivery-checkbox[value="${op}"]`);
+                if (box) box.checked = true;
+            });
+        }
+
+        const previewBox = document.getElementById('listingImagePreview');
+        const urlInput = document.getElementById('listingImageUrl');
+
+        if (data.image_url) {
+            urlInput.value = data.image_url;
+            previewBox.style.backgroundImage = `url('${data.image_url}')`;
+            previewBox.classList.add('has-image');
+        } else {
+            urlInput.value = '';
+            previewBox.style.backgroundImage = '';
+            previewBox.classList.remove('has-image');
+        }
+
         openModal('listingModal');
     };
-
+    
     window.deleteListing = async (id) => {
-        if(confirm("Delete this listing?")) { await _supabase.from('listings').delete().eq('id', id); loadListings(); }
+        if (!confirm("Are you sure? This will hide the listing but keep the record.")) return;
+
+        const { error } = await _supabase
+            .from('listings')
+            .update({ status: 'deleted' }) 
+            .eq('id', id);
+
+        if (error) {
+            console.error("Delete failed:", error);
+            alert("Could not delete: " + error.message);
+        } else {
+            loadListings();
+        }
     };
 
     // --- REVIEWS & DISPUTES ---
@@ -732,29 +867,72 @@
         }).join('') || '<p style="text-align:center; color:var(--muted)">No reviews.</p>';
     }
 
-    async function loadReviewsGiven() {
-        const { data } = await _supabase.from('reviews')
-            .select(`*, seller:seller_id(full_name), transactions:transaction_id(id, amount_paid, created_at, shipping_method, listings(title, image_url), payments(method))`)
-            .eq('reviewer_id', currentUser.id)
-            .order('created_at', { ascending: false });
+    // --- MODIFIED: Load both Pending and Given Reviews ---
+async function loadReviewsGiven() {
+    // 1. Fetch Existing Reviews
+    const { data: reviews } = await _supabase.from('reviews')
+        .select(`*, seller:seller_id(full_name), transactions:transaction_id(id, amount_paid, created_at, shipping_method, listings(title, image_url), payments(method))`)
+        .eq('reviewer_id', currentUser.id)
+        .order('created_at', { ascending: false });
 
-        document.getElementById('reviewsGivenList').innerHTML = data?.map(r => {
-            const tx = r.transactions || {};
-            const listing = tx.listings || {};
-            const img = listing.image_url || 'https://via.placeholder.com/60';
+    // SAVE TO CACHE (Critical Fix)
+    myReviewsCache = reviews || [];
 
-            return `
-            <div class="review-card-detailed">
-                <img src="${img}" class="review-img">
-                <div class="review-main">
-                    <div class="review-header-row"><div class="review-product-title">${listing.title}</div><div class="review-stars">${'★'.repeat(r.rating)}</div></div>
-                    <div class="review-meta"><span>🆔 Tx: ${tx.id?.slice(0,8)}</span><span>👤 Seller: ${r.seller?.full_name}</span></div>
-                    <div class="review-content-box">"${r.content}"</div>
-                    <button onclick="openEditReview('${r.id}', '${r.rating}', '${r.content}')" class="btn outline" style="padding:4px 8px; font-size:12px; width:fit-content; margin-top:5px;">Edit</button>
+    // Render Past Reviews
+    document.getElementById('reviewsGivenList').innerHTML = reviews?.map(r => {
+        const tx = r.transactions || {};
+        const listing = tx.listings || {};
+        const img = listing.image_url || 'https://via.placeholder.com/60';
+
+        // ESCAPE HTML CONTENT FOR DISPLAY
+        const safeContent = r.content ? r.content.replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";
+
+        return `
+        <div class="review-card-detailed">
+            <img src="${img}" class="review-img">
+            <div class="review-main">
+                <div class="review-header-row">
+                    <div class="review-product-title">${listing.title || 'Unknown Item'}</div>
+                    <div class="review-stars">${'★'.repeat(r.rating)}</div>
                 </div>
-            </div>`;
-        }).join('') || '<p style="text-align:center; color:var(--muted)">No reviews given.</p>';
+                <div class="review-meta">
+                    <span>🆔 Tx: ${tx.id?.slice(0,8)}</span>
+                    <span>👤 Seller: ${r.seller?.full_name}</span>
+                </div>
+                <div class="review-content-box">"${safeContent}"</div>
+                
+                <button onclick="openEditReview('${r.id}')" class="btn outline" style="padding:4px 8px; font-size:12px; width:fit-content; margin-top:5px;">Edit</button>
+            </div>
+        </div>`;
+    }).join('') || '<p style="text-align:center; color:var(--muted)">No past reviews.</p>';
+
+    // ... (Keep the rest of the pending reviews logic exactly the same) ...
+    // 2. Fetch Completed Transactions...
+    const { data: purchases } = await _supabase.from('transactions')
+        .select(`*, listings(title, image_url), seller:seller_id(full_name)`)
+        .eq('buyer_id', currentUser.id)
+        .eq('status', 'completed');
+
+    const reviewedTxIds = reviews ? reviews.map(r => r.transaction_id) : [];
+    const pending = purchases ? purchases.filter(tx => !reviewedTxIds.includes(tx.id)) : [];
+
+    const pendingContainer = document.getElementById('pendingReviewsList');
+    if (!pending.length) {
+        pendingContainer.innerHTML = '<p style="color:var(--muted); font-style:italic;">No pending reviews. Good job!</p>';
+    } else {
+        pendingContainer.innerHTML = pending.map(tx => `
+            <div class="listing-card" style="flex-direction:row; height:auto; align-items:center; padding:15px;">
+                <img src="${tx.listings?.image_url || 'https://via.placeholder.com/60'}" style="width:70px; height:70px; border-radius:8px; object-fit:cover;">
+                <div style="flex:1; padding:0 15px;">
+                    <div style="font-weight:700; font-size:15px; margin-bottom:4px;">${tx.listings?.title}</div>
+                    <div style="font-size:12px; color:var(--muted);">Seller: ${tx.seller?.full_name}</div>
+                    <div style="font-size:11px; color:var(--success);">Completed on ${new Date(tx.updated_at || tx.created_at).toLocaleDateString()}</div>
+                </div>
+                <a href="tracking.html?tx=${tx.id}" class="btn primary" style="font-size:13px; text-decoration:none;">Rate Now →</a>
+            </div>
+        `).join('');
     }
+}
 
     window.openReply = (id) => { document.getElementById('replyReviewId').value=id; document.getElementById('replyModal').classList.add('open'); };
     async function submitReply() {
@@ -764,12 +942,23 @@
         closeModal('replyModal'); loadReviewsReceived();
     }
 
-    window.openEditReview = (id, rating, content) => {
-        document.getElementById('editReviewId').value = id;
-        document.getElementById('editReviewRating').value = rating;
-        document.getElementById('editReviewText').value = content;
-        document.getElementById('editReviewModal').classList.add('open');
+window.openEditReview = (id) => {
+    // 1. Find the review object in our cache
+    const review = myReviewsCache.find(r => r.id == id);
+    
+    if (!review) {
+        console.error("Review not found in cache for ID:", id);
+        return;
     }
+
+    // 2. Populate the form safely
+    document.getElementById('editReviewId').value = review.id;
+    document.getElementById('editReviewRating').value = review.rating;
+    document.getElementById('editReviewText').value = review.content; // Works safely with quotes now
+    
+    // 3. Open Modal
+    document.getElementById('editReviewModal').classList.add('open');
+}
 
     async function submitEditReview() {
         const id = document.getElementById('editReviewId').value;
@@ -807,6 +996,50 @@
             reader.readAsDataURL(file);
         }
     });
+
+    // 1. HANDLE FILE UPLOAD
+    async function uploadToSupabase(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const previewBox = document.getElementById('listingImagePreview');
+        const previewText = document.getElementById('previewText');
+        previewText.innerText = "Uploading...";
+
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
+            const filePath = `images/${fileName}`;
+
+            const { data, error } = await _supabase.storage
+                .from('images') 
+                .upload(filePath, file);
+
+            if (error) throw error;
+
+            const { data: { publicUrl } } = _supabase.storage
+                .from('images')
+                .getPublicUrl(filePath);
+
+            setPreviewImage(publicUrl);
+            
+            console.log("Image Uploaded:", publicUrl);
+
+        } catch (error) {
+            console.error("Upload failed:", error);
+            previewText.innerText = "Upload Failed. Try again.";
+            alert("Error uploading image: " + error.message);
+        }
+    }
+
+    function setPreviewImage(url) {
+        const previewBox = document.getElementById('listingImagePreview');
+        const urlInput = document.getElementById('listingImageUrl');
+        
+        urlInput.value = url;
+        previewBox.style.backgroundImage = `url('${url}')`;
+        previewBox.classList.add('has-image'); 
+    }
 
     async function saveProfile() {
         await _supabase.from('profiles').update({
@@ -853,13 +1086,12 @@
             <div style="margin-top:20px;">${actions}</div>
         `;
     }
+    
     // === AUTO-LOGOUT SYSTEM (20 MINS) ===
     (function() {
-        // 1. Check if user is logged in
-        const session = localStorage.getItem('sb-dkpnhswjjmjligemxoet-auth-token'); // Checks for Supabase session
-        if (!session) return; // If no session, no need to run timer
+        const session = localStorage.getItem('sb-dkpnhswjjmjligemxoet-auth-token'); 
+        if (!session) return; 
 
-        // 2. Check "Remember Me" preference
         const isRemembered = localStorage.getItem('uniTrade_remember') === 'true';
 
         if (isRemembered) {
@@ -869,8 +1101,7 @@
 
         console.log("⏳ Public Session: Auto-logout enabled (20 mins).");
 
-        // 3. Setup Timer
-        const TIMEOUT_LIMIT = 20 * 60 * 1000; // 20 Minutes
+        const TIMEOUT_LIMIT = 20 * 60 * 1000; 
         let idleTimer;
 
         function resetTimer() {
@@ -879,7 +1110,6 @@
         }
 
         async function logoutUser() {
-            // Use the global _supabase client if available, otherwise assume session expired
             if (window._supabase) {
                 await window._supabase.auth.signOut();
             }
@@ -887,7 +1117,6 @@
             window.location.href = 'index.html';
         }
 
-        // 4. Listen for any movement
         window.onload = resetTimer;
         document.onmousemove = resetTimer;
         document.onkeypress = resetTimer;

@@ -196,18 +196,25 @@
       </div>
     </div>
 
-    <div id="users" class="tab-content">
-      <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-        <h3>User Management</h3>
-        <button class="btn ghost small" onclick="loadUsers()">Refresh</button>
-      </div>
-      <div class="table-container">
-        <table>
-          <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
-          <tbody id="usersTableBody"></tbody>
-        </table>
-      </div>
+<div id="users" class="tab-content">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+    <h3>User Management</h3>
+    
+    <div style="display:flex; gap:10px; align-items:center; background:var(--card); padding:5px 10px; border-radius:8px; border:1px solid var(--border);">
+       <span id="userPageDisplay" style="font-size:12px; color:var(--muted); font-weight:600; min-width: 100px; text-align: center;">Loading...</span>
+       
+       <button class="btn ghost small" onclick="changeUserPage(-1)" id="btnPrev">←</button>
+       <button class="btn ghost small" onclick="changeUserPage(1)" id="btnNext">→</button>
     </div>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+      <tbody id="usersTableBody"></tbody>
+    </table>
+  </div>
+</div>
 
     <div id="products" class="tab-content">
       <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
@@ -383,7 +390,7 @@ async function loadUsers() {
 
     const { data: users, error } = await _supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, email, role, is_approved, created_at, avatar_url, phone_number, campus_location')
         .order('created_at', { ascending: false });
 
     // 1. Log Errors

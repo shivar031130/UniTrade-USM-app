@@ -12,12 +12,12 @@
     :root[data-theme="dark"]{
       --bg:#0f172a; --card:rgba(30, 41, 59, 0.7); --muted:#94a3b8; 
       --accent:#3b82f6; --text:#f1f5f9; --border:rgba(148, 163, 184, 0.2); 
-      --success: #10b981; --warning: #f59e0b;
+      --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
     }
     :root[data-theme="light"]{
       --bg:#f1f5f9; --card:rgba(255, 255, 255, 0.7); --muted:#64748b; 
       --accent:#3b82f6; --text:#0f172a; --border:rgba(15, 23, 42, 0.1); 
-      --success: #10b981; --warning: #f59e0b;
+      --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
     }
     
     * { box-sizing: border-box; }
@@ -43,7 +43,19 @@
     .btn:hover { transform: translateY(-2px); opacity: 0.9; }
     .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
     .btn.success { background: var(--success); }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn.danger { background: var(--danger); }
+    
+    /* DISABLED STATE (Greyed Out) */
+    .btn:disabled { 
+        background: var(--muted); 
+        opacity: 0.5; 
+        cursor: not-allowed; 
+        transform: none; 
+    }
+    .btn:disabled:hover { 
+        transform: none;
+        opacity: 0.5;
+    }
 
     /* Main Info Header */
     .tracking-header {
@@ -100,14 +112,39 @@
     .product-preview img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: #000; }
     
     /* Review Form */
-    #reviewSection { max-height: 0; overflow: hidden; transition: all 0.5s ease-in-out; margin-top: 20px; }
-    #reviewSection.visible { max-height: 500px; }
+    #reviewSection { 
+        display: none; /* Hidden by default */
+        margin-top: 20px; 
+        animation: fadeIn 0.5s ease;
+    }
+
+    #reviewSection.visible { 
+        display: block !important; /* Force show */
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
     .review-form { background: var(--card); padding: 24px; border-radius: 16px; border: 1px solid var(--border); }
     .star-rating { display: flex; gap: 8px; margin-bottom: 16px; cursor: pointer; justify-content: center; }
-    .star-rating svg { width: 32px; height: 32px; color: var(--border); transition: 0.2s; }
-    .star-rating svg.filled { color: var(--warning); fill: var(--warning); }
-    textarea { width: 100%; min-height: 80px; padding: 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); color: var(--text); outline: none; margin-bottom: 15px; }
+    
+    .star-rating svg { width: 32px; height: 32px; color: var(--muted); stroke: currentColor; fill: none; transition: 0.2s; }
+    .star-rating svg:hover { transform: scale(1.1); }
+
+    textarea { width: 100%; min-height: 80px; padding: 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); color: var(--text); outline: none; margin-bottom: 15px; resize: vertical; font-family: inherit; }
     textarea:focus { border-color: var(--accent); }
+
+    /* Modal */
+    .modal-overlay {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); 
+        z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+    }
+    .modal-content {
+        background: var(--card); width: 90%; max-width: 500px; padding: 30px; 
+        border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
 
     @media(max-width: 768px) { .tracking-layout { grid-template-columns: 1fr; } }
   </style>
@@ -139,18 +176,12 @@
 
         <div class="tracking-layout">
             <div class="timeline-card">
-                <ul class="timeline" id="timelineList">
+                <div style="position: relative;">
                     <div class="timeline-progress" id="progressBar"></div>
-                    </ul>
-                
-                <div id="actionArea" style="margin-top: 30px;">
-                    <button id="markReceivedBtn" class="btn success" style="width: 100%;">
-                        ✓ Mark Order as Received
-                    </button>
-                    <div id="completedMsg" style="display:none; text-align:center; background:rgba(16,185,129,0.1); color:var(--success); padding:15px; border-radius:10px; font-weight:600;">
-                        ✓ Order Completed
-                    </div>
+                    <ul class="timeline" id="timelineList"></ul>
                 </div>
+                
+                <div id="actionArea" style="margin-top: 30px;"></div>
             </div>
 
             <div>
@@ -173,13 +204,39 @@
                 <div id="reviewSection">
                     <div class="review-form">
                         <h3 style="margin-top:0; text-align:center;">Rate this Seller</h3>
-                        <div class="star-rating" id="starContainer">
-                            </div>
+                        <div class="star-rating" id="starContainer"></div>
                         <textarea id="reviewText" placeholder="Write your experience..."></textarea>
                         <button id="submitReviewBtn" class="btn" style="width:100%">Submit Review</button>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+  </div>
+
+  <div id="disputeModal" class="modal-overlay">
+    <div class="modal-content">
+        <h2 style="margin-top:0; color:var(--text);">Raise a Dispute</h2>
+        <p style="color:var(--muted); font-size:14px; margin-bottom:20px;">Please tell us what went wrong with this order.</p>
+        
+        <div style="margin-bottom:15px;">
+            <label style="display:block; font-size:13px; font-weight:600; margin-bottom:8px;">Reason</label>
+            <select id="disputeReason" style="width:100%; padding:12px; border-radius:8px; background:var(--bg); color:var(--text); border:1px solid var(--border); outline:none;">
+                <option value="Item not received">Item not received</option>
+                <option value="Item damaged">Item damaged / Defective</option>
+                <option value="Wrong item sent">Wrong item sent</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+
+        <div style="margin-bottom:20px;">
+            <label style="display:block; font-size:13px; font-weight:600; margin-bottom:8px;">Description</label>
+            <textarea id="disputeDesc" rows="4" style="width:100%; padding:12px; border-radius:8px; background:var(--bg); color:var(--text); border:1px solid var(--border); outline:none; resize: vertical; font-family: inherit;" placeholder="Provide details..."></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn ghost" onclick="closeDisputeModal()">Cancel</button>
+            <button id="btnSubmitDispute" class="btn danger" onclick="submitDispute()">Submit Dispute</button>
         </div>
     </div>
   </div>
@@ -199,10 +256,10 @@
         { code: 'pending', label: 'Order Placed', icon: '📝' },
         { code: 'confirmed', label: 'Seller Confirmed', icon: '📦' },
         { code: 'shipped', label: 'Shipped', icon: '🚚' },
-        { code: 'completed', label: 'Delivered', icon: '🏠' } 
+        { code: 'delivered', label: 'Delivered', icon: '🏠' } 
     ];
 
-    // 3. INIT LOAD
+    // 2. INIT
     async function init() {
         if (!txId) {
             document.getElementById('loading').innerText = "No transaction ID provided.";
@@ -212,18 +269,20 @@
         const { data: { session } } = await _supabase.auth.getSession();
         if(!session) return window.location.href = 'index.html';
 
+        // Fetch transaction + details
         const { data: tx, error } = await _supabase
             .from('transactions')
             .select(`
                 *,
-                listings:listing_id (id, title, price, image_url),
+                listings:listing_id (id, title, image_url),
                 seller:seller_id (id, full_name)
             `)
             .eq('id', txId)
             .single();
 
         if (error || !tx) {
-            document.getElementById('loading').innerText = "Transaction not found.";
+            console.error(error);
+            document.getElementById('loading').innerText = "Transaction not found or Access Denied.";
             return;
         }
 
@@ -234,9 +293,9 @@
         renderUI();
     }
 
-    // 4. RENDER UI
+    // 3. RENDER UI
     function renderUI() {
-        // Info Headers
+        // --- Headers ---
         document.getElementById('txIdDisplay').innerText = currentTx.id.slice(0, 8).toUpperCase();
         document.getElementById('statusDisplay').innerText = currentTx.status.toUpperCase();
         document.getElementById('dateDisplay').innerText = new Date(currentTx.created_at).toLocaleDateString();
@@ -244,101 +303,151 @@
         document.getElementById('paymentDisplay').innerText = (currentTx.payment_method || 'COD').toUpperCase();
         document.getElementById('amountDisplay').innerText = `RM ${currentTx.amount_paid.toFixed(2)}`;
         
-        // --- FIX: SAFETY CHECK FOR DELETED/HIDDEN ITEMS ---
+        // --- Product Info ---
         if (currentTx.listings) {
             document.getElementById('productTitle').innerText = currentTx.listings.title;
-            
-            // Image Logic
-            let imgUrl = 'assets/products/placeholder.jpg';
-            if (currentTx.listings.image_url) {
-                imgUrl = currentTx.listings.image_url.startsWith('http') 
-                    ? currentTx.listings.image_url 
-                    : `assets/products/${currentTx.listings.image_url}`;
-            }
-            document.getElementById('productImg').src = imgUrl;
+            document.getElementById('productImg').src = currentTx.listings.image_url || 'https://via.placeholder.com/60';
         } else {
-            // Fallback if listing is null
             document.getElementById('productTitle').innerText = "Item Unavailable (Deleted)";
-            document.getElementById('productImg').src = "https://via.placeholder.com/100?text=Deleted";
+            document.getElementById('productImg').src = "https://via.placeholder.com/60?text=Deleted";
         }
+        document.getElementById('productQty').innerText = `Ordered Qty: ${currentTx.quantity || 1}`;
 
-        // Always show the quantity from the transaction record (NOT the listing stock)
-        document.getElementById('productQty').innerText = `Ordered Qty: ${currentTx.quantity}`;
-
-
-        // Timeline Logic
+        // --- Timeline Logic ---
         let currentStepIndex = steps.findIndex(s => s.code === currentTx.status);
-        if (currentTx.status === 'delivered') currentStepIndex = 3; 
-        if (currentStepIndex === -1 && currentTx.status === 'completed') currentStepIndex = 3; // Handle completed mapping
         if (currentStepIndex === -1) currentStepIndex = 0;
 
         const timelineList = document.getElementById('timelineList');
-        let html = '';
+        const progressBar = document.getElementById('progressBar');
         
+        let html = '';
         steps.forEach((step, index) => {
             const isCompleted = index <= currentStepIndex;
             const isActive = index === currentStepIndex;
-            const statusClass = isCompleted ? 'completed' : '';
-            const activeClass = isActive ? 'active' : '';
-            
             html += `
-                <li class="timeline-item ${statusClass} ${activeClass}">
+                <li class="timeline-item ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}">
                     <div class="timeline-dot">${isCompleted ? '✔' : step.icon}</div>
                     <div class="timeline-content">
                         <h3>${step.label}</h3>
                         <p>${isCompleted ? 'Completed' : 'Pending'}</p>
                     </div>
-                </li>
-            `;
+                </li>`;
         });
-        timelineList.innerHTML = html; // Clear and set
-        const progressPercent = (currentStepIndex / (steps.length - 1)) * 100;
-        document.getElementById('progressBar').style.height = `${progressPercent}%`;
+        
+        if (timelineList) timelineList.innerHTML = html;
+        if (progressBar) progressBar.style.height = `${(currentStepIndex / (steps.length - 1)) * 100}%`;
 
-        // Buttons
-        const btn = document.getElementById('markReceivedBtn');
-        const msg = document.getElementById('completedMsg');
+        // --- BUTTON & RATING LOGIC ---
+        const actionArea = document.getElementById('actionArea');
         const reviewSec = document.getElementById('reviewSection');
+        
+        // Check if order is completed
+        const isCompleted = currentTx.status.toLowerCase() === 'completed';
 
-        if (currentTx.status === 'completed' || currentTx.status === 'delivered') {
-            if(btn) btn.style.display = 'none';
-            if(msg) msg.style.display = 'block';
+        console.log('Current Status:', currentTx.status, 'Is Completed:', isCompleted);
+
+        // ALWAYS SHOW BUTTONS - Both dispute and mark received
+        if (isCompleted) {
+            // STATE: COMPLETED -> Button Disabled (Grey), Rating Visible
+            actionArea.innerHTML = `
+                <button class="btn success" style="width: 100%;" disabled>
+                    ✓ Order Received (Completed)
+                </button>
+                <button class="btn ghost" style="width:100%; margin-top:10px; color:var(--danger); border-color:var(--danger);" onclick="openDisputeModal()">
+                    ! Raise a Dispute
+                </button>
+            `;
+            
+            // Show Review Section
             if(reviewSec) {
-                reviewSec.classList.add('visible');
-                renderStars();
+                reviewSec.classList.add('visible'); 
+                renderStars(); 
             }
         } else {
-            if(btn) {
-                btn.style.display = 'block';
-                btn.onclick = markAsReceived;
-            }
-            if(msg) msg.style.display = 'none';
+            // STATE: ACTIVE (pending/confirmed/shipped/delivered) -> Button Clickable (Green), Rating Hidden
+            actionArea.innerHTML = `
+                <button id="markReceivedBtn" class="btn success" style="width: 100%;" onclick="markAsReceived()">
+                    ✓ Mark Order as Received
+                </button>
+                <button class="btn ghost" style="width:100%; margin-top:10px; color:var(--danger); border-color:var(--danger);" onclick="openDisputeModal()">
+                    ! Raise a Dispute
+                </button>
+            `;
+            
+            // Hide Review Section
             if(reviewSec) reviewSec.classList.remove('visible');
         }
+        
+        console.log('Action Area HTML:', actionArea.innerHTML);
     }
 
-    // 5. MARK RECEIVED
-    async function markAsReceived() {
+    // 4. ACTION FUNCTIONS (Global)
+    window.markAsReceived = async function() {
         if (!confirm("Confirm you received the item?")) return;
+        
+        const btn = document.getElementById('markReceivedBtn');
+        if(btn) { btn.innerText = "Processing..."; btn.disabled = true; }
 
-        const { error } = await _supabase
-            .from('transactions')
-            .update({ status: 'completed' })
-            .eq('id', txId);
+        try {
+            const { data, error } = await _supabase
+                .from('transactions')
+                .update({ status: 'completed' })
+                .eq('id', txId)
+                .select();
 
-        if (error) alert("Error: " + error.message);
-        else location.reload(); 
-    }
+            if (error) throw error;
+            if (!data || data.length === 0) throw new Error("Permission denied. Check if you are the buyer.");
 
-    // 6. REVIEW SYSTEM
+            alert("Success! Item marked as received.");
+            location.reload();
+        } catch (err) {
+            alert("Error: " + err.message);
+            if(btn) { btn.innerText = "✓ Mark Order as Received"; btn.disabled = false; }
+        }
+    };
+
+    // Dispute Modal Logic
+    window.openDisputeModal = () => document.getElementById('disputeModal').style.display = 'flex';
+    window.closeDisputeModal = () => document.getElementById('disputeModal').style.display = 'none';
+
+    window.submitDispute = async function() {
+        const btn = document.getElementById('btnSubmitDispute');
+        const reason = document.getElementById('disputeReason').value;
+        const desc = document.getElementById('disputeDesc').value;
+        
+        if (!desc) return alert("Please provide a description.");
+        btn.innerText = "Submitting..."; btn.disabled = true;
+
+        try {
+            const { data: { session } } = await _supabase.auth.getSession();
+            const { error } = await _supabase.from('disputes').insert({
+                transaction_id: currentTx.id,
+                buyer_id: session.user.id,
+                seller_id: currentTx.seller.id,
+                reason: reason,
+                description: desc,
+                status: 'ongoing'
+            });
+
+            if (error) throw error;
+            alert("Dispute raised successfully.");
+            closeDisputeModal();
+        } catch (err) {
+            console.error(err);
+            alert("Error: " + err.message);
+            btn.innerText = "Submit Dispute"; btn.disabled = false;
+        }
+    };
+
+    // 5. REVIEW SYSTEM
     function renderStars() {
         const container = document.getElementById('starContainer');
-        if(!container) return;
+        if(!container || container.innerHTML.trim() !== "") return;
+        
         let html = '';
         for(let i=1; i<=5; i++) {
             html += `
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" 
-                 class="star-icon" data-val="${i}" onclick="setRating(${i})">
+            <svg viewBox="0 0 24 24" class="star-icon" data-val="${i}" onclick="setRating(${i})">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
             </svg>`;
         }
@@ -349,78 +458,37 @@
         ratingVal = val;
         document.querySelectorAll('.star-icon').forEach(el => {
             const v = parseInt(el.dataset.val);
-            if (v <= val) { el.style.fill = '#f59e0b'; el.style.color = '#f59e0b'; } 
-            else { el.style.fill = 'none'; el.style.color = 'var(--border)'; }
+            if (v <= val) { 
+                el.style.fill = '#f59e0b'; el.style.color = '#f59e0b'; 
+            } else { 
+                el.style.fill = 'none'; el.style.color = 'var(--muted)'; 
+            }
         });
-    }
+    };
 
-    const submitBtn = document.getElementById('submitReviewBtn');
-    if(submitBtn) {
-        submitBtn.addEventListener('click', async () => {
-            if (ratingVal === 0) return alert("Please select a rating.");
-            const content = document.getElementById('reviewText').value;
+    document.getElementById('submitReviewBtn').addEventListener('click', async () => {
+        if (ratingVal === 0) return alert("Please select a rating.");
+        const content = document.getElementById('reviewText').value;
+        const btn = document.getElementById('submitReviewBtn');
+        btn.innerText = "Submitting..."; btn.disabled = true;
+
+        try {
             const { data: { session } } = await _supabase.auth.getSession();
-
             const { error } = await _supabase.from('reviews').insert({
                 transaction_id: currentTx.id,
                 reviewer_id: session.user.id,
-                seller_id: currentTx.seller_id,
+                seller_id: currentTx.seller.id,
                 rating: ratingVal,
                 content: content
             });
-
-            if (error) {
-                alert("Error submitting review: " + error.message);
-            } else {
-                document.getElementById('reviewSection').innerHTML = `
-                    <div style="text-align:center; padding:20px; color:var(--success); font-weight:bold; background:rgba(16,185,129,0.1); border-radius:12px;">
-                        Thank you! Review submitted.
-                    </div>
-                `;
-            }
-        });
-    }
-    // === AUTO-LOGOUT SYSTEM (20 MINS) ===
-    (function() {
-        // 1. Check if user is logged in
-        const session = localStorage.getItem('sb-dkpnhswjjmjligemxoet-auth-token'); // Checks for Supabase session
-        if (!session) return; // If no session, no need to run timer
-
-        // 2. Check "Remember Me" preference
-        const isRemembered = localStorage.getItem('uniTrade_remember') === 'true';
-
-        if (isRemembered) {
-            console.log("🔒 Remember Me active: Auto-logout disabled.");
-            return;
+            if (error) throw error;
+            document.getElementById('reviewSection').innerHTML = `<div style="text-align:center; padding:20px; color:var(--success);">Thank you! Review submitted.</div>`;
+        } catch (err) {
+            alert("Error: " + err.message);
+            btn.innerText = "Submit Review"; btn.disabled = false;
         }
+    });
 
-        console.log("⏳ Public Session: Auto-logout enabled (20 mins).");
-
-        // 3. Setup Timer
-        const TIMEOUT_LIMIT = 20 * 60 * 1000; // 20 Minutes
-        let idleTimer;
-
-        function resetTimer() {
-            clearTimeout(idleTimer);
-            idleTimer = setTimeout(logoutUser, TIMEOUT_LIMIT);
-        }
-
-        async function logoutUser() {
-            // Use the global _supabase client if available, otherwise assume session expired
-            if (window._supabase) {
-                await window._supabase.auth.signOut();
-            }
-            alert("For your security, you have been logged out due to 20 minutes of inactivity.");
-            window.location.href = 'index.html';
-        }
-
-        // 4. Listen for any movement
-        window.onload = resetTimer;
-        document.onmousemove = resetTimer;
-        document.onkeypress = resetTimer;
-        document.onclick = resetTimer;
-        document.onscroll = resetTimer;
-    })();
     init();
 </script>
 </body>
